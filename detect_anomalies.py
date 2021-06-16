@@ -57,4 +57,7 @@ if __name__ == "__main__":
         if check_app_flow(app_name):
             print("{0:2d}. Anomaly detected: {1:15s} --> {2:15s} , {3:15s}".format(anomalies, src_ip, dst_ip, app_name))
             anomalies += 1
-            anomalies_list.append(app_name)
+            anomalies_list.append(app_name) 
+
+#dare informazioni su ip e gestire associazione ip-applicazione  (il dispositivo potrebbe parlare anche con ip locali),
+#ovviamente la mappa dei servizi non si può fare su host remoti che cambiano continuamente ma si può fare con host locali
