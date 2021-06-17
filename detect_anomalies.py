@@ -3,12 +3,14 @@ import json
 import sys
 import getopt
 from signal import signal, SIGINT
-# from flows_capture import ....
+# from utils import ....
 
+APP_NAME_ERR = "PROTOCOL NEVER USED"
+DST_IP_ERR   = "UNKNOWN DESTINATION IP"
+SRC_IP_ERR   = "UNKNOWN SOURCE IP"
 
-flows_counter  = 0   # number of analyzed flows
-report         = {}  # dictionary used for the final report
-outlier_report = {}  # dictionary used for the final report (outlier)
+flows_counter = 0   # number of analyzed flows
+report = {"":[], APP_NAME_ERR:[], DST_IP_ERR:[], SRC_IP_ERR:[]}  # dictionary used for the final report
 
 # Load the services map used as a reference to detect anomalies
 with open('export.json', 'r') as fd:
@@ -45,10 +47,8 @@ def parse_cmdline_args(argv):
 
 # Check if addr is a local or remote address
 def check_address(addr):
-    parts = addr.split(".")
-    # Convert string to int
-    for i in range(0, len(parts)):
-        parts[i] = int(parts[i])
+    # Split the address and convert it to int
+    parts = list(map(int, addr.split(".")))
     
     # local address 10.0.0.0 - 10.255.255.255
     if parts[0] == 10:
@@ -65,50 +65,94 @@ def check_address(addr):
 # Based on source ip, destination ip and application name of the flow, check if 
 # the flow is an anomaly on the network
 def check_flow(src_ip, dst_ip, app_name):
-    resp = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
-    err = ""
-
-    # src_ip never seen in the network
+    # src_ip already seen in the network
     if src_ip in services_map.keys():
         # src_ip has alreay contacted dst_ip
         if dst_ip in services_map[src_ip].keys():
             # with a different protocol
             if app_name not in services_map[src_ip][dst_ip][1:]:
-                err = "PROTOCOL NEVER USED"
+                return APP_NAME_ERR
         else:
-            err = "UNKNOWN DESTINATION IP"
+            return DST_IP_ERR
     else:
-        err = "UNKNOWN SOURCE IP"
-    
-    return resp+err
+        return SRC_IP_ERR
 
-# SIGINT handler function
-def handler(signal_received, frame):
-    exit(0)
+    return ""
+
+# Update a data structure dedicated to the final report (after an interruption like SIGINT)
+def update_report(err_id, src_ip, dst_ip, app_name, b_bytes, report_dict):
+    try:
+        dst_list = report_dict[src_ip]
+    # "src_ip" key doesn't exists
+    except KeyError:
+        report_dict[src_ip][dst_ip] = [err_id, b_bytes, app_name]
+    
+    # If "src_ip" is a key, let's see if dst_ip already exists
+    if dst_ip not in dst_list.keys():
+        dst_list[dst_ip] = [err_id, b_bytes, app_name]
+    else:
+        dst_list[dst_ip][1] += b_bytes
+        dst_list[dst_ip].append(app_name)
+
+    return report_dict
+
+def print_report(report):
+    # For every source ip
+    for i in report.keys():
+        dst_list = report[i]
+        print("{0:15s} talks to: ".format(i))
+        
+        # For every destination ip
+        for j in dst_list.keys():
+            arr = dst_list[j]
+            print("\t--> {0:15s}, {1:20s}, Bytes:{2:9d}, {3:22s}".format(
+                j,
+                arr[2:],
+                arr[1],
+                arr[0]
+            ))
+            
 
 if __name__ == "__main__":
-    # Get interface name and activate the metering processes
-    interface = parse_cmdline_args(sys.argv[1:])
-    my_streamer = nfstream.NFStreamer(source=interface,
-    snapshot_length=1600,
-    idle_timeout=120,
-    active_timeout=1800,
-    udps=None)
+    try:
+        # Get interface name and activate the metering processes
+        interface = parse_cmdline_args(sys.argv[1:])
+        my_streamer = nfstream.NFStreamer(source=interface,
+            snapshot_length=1600,
+            idle_timeout=120,
+            active_timeout=1800,
+            udps=None)
 
-    # When SIGINT is received, activate the handler
-    signal(SIGINT, handler)
+        for flow in my_streamer:
+            # Doesn't count IPv6 addresses (TODO)
+            if ":" in flow.src_ip:
+                continue
 
-    for flow in my_streamer:
-        # Don't count IPv6 addresses (TODO)
-        if ":" in flow.src_ip:
-            continue
+            src_ip   = check_address(flow.src_ip) 
+            dst_ip   = check_address(flow.dst_ip)
+            app_name = flow.application_name
+            b_bytes  = int(flow.bidirectional_bytes)
+            resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
+            
+            err = check_flow(src_ip, dst_ip, app_name)
+            report = update_report(err, src_ip, dst_ip, app_name, b_bytes, report)
 
-        src_ip   = check_address(flow.src_ip) 
-        dst_ip   = check_address(flow.dst_ip)
-        app_name = flow.application_name
-        
-        resp = check_flow(src_ip, dst_ip, app_name)
-        
-        # Print flow analysis results
-        print("{0:2d}. {}".format(flows_counter, resp))
-        flows_counter += 1
+            # Print flow analysis results
+            print("{0:2d}. {}".format(flows_counter, resp+err))
+            flows_counter += 1
+    except KeyboardInterrupt:
+        print("\n++++++++++++++++++++++++++++++++++ REPORT ++++++++++++++++++++++++++++++++++")
+        print_report(report)
+        pass
+
+# TODO: Statistiche su numero di anomalie, percentuali ecc..
+# TODO: creare utils.py con tutte le classi/funzioni che vengono condivise dai vari script
+# TODO: Support IPv6
+'''
+src_ip: {
+    src_error: 1/0
+    dst_ip:[err_id, bytes, app_name]
+    dst_ip1:[err_id, bytes, app_name1, app_name2]
+    ....
+}
+'''
