@@ -4,12 +4,12 @@ import sys
 import getopt   
 # from utils import ....
 
-APP_NAME_ERR = "PROTOCOL NEVER USED"
-DST_IP_ERR   = "UNKNOWN DESTINATION IP"
-SRC_IP_ERR   = "UNKNOWN SOURCE IP"
+APP_NAME_ERR  = "PROTOCOL NEVER USED"
+DST_IP_ERR    = "UNKNOWN DESTINATION IP"
+SRC_IP_ERR    = "UNKNOWN SOURCE IP"
 
 flows_counter = 0   # number of analyzed flows
-report = {"":[], APP_NAME_ERR:[], DST_IP_ERR:[], SRC_IP_ERR:[]}  # dictionary used for the final report
+report        = {}  # dictionary used for the final report
 
 # Load the services map used as a reference to detect anomalies
 with open('export.json', 'r') as fd:
@@ -82,19 +82,21 @@ def check_flow(src_ip, dst_ip, app_name):
 def update_report(err_id, src_ip, dst_ip, app_name, b_bytes, report_dict):
     try:
         dst_list = report_dict[src_ip]
+
+         # If "src_ip" is a key, let's see if dst_ip already exists
+        if dst_ip not in dst_list.keys():
+            dst_list[dst_ip] = [err_id, b_bytes, app_name]
+        else:
+            dst_list[dst_ip][1] += b_bytes
+            # app_name never registered
+            if app_name not in dst_list[dst_ip][2:]:
+                dst_list[dst_ip].append(app_name)
+
     # "src_ip" key doesn't exists
     except KeyError:
         report_dict[src_ip] = {}
         report_dict[src_ip][dst_ip] = [err_id, b_bytes, app_name]
-        dst_list = report_dict[src_ip]
     
-    # If "src_ip" is a key, let's see if dst_ip already exists
-    if dst_ip not in dst_list.keys():
-        dst_list[dst_ip] = [err_id, b_bytes, app_name]
-    else:
-        dst_list[dst_ip][1] += b_bytes
-        dst_list[dst_ip].append(app_name)
-
     return report_dict
 
 
@@ -123,7 +125,7 @@ if __name__ == "__main__":
     interface = parse_cmdline_args(sys.argv[1:])
     my_streamer = nfstream.NFStreamer(source=interface,
         snapshot_length=1600,
-        idle_timeout=120,
+        idle_timeout=60, # set to 120, 60 for testing
         active_timeout=1800,
         udps=None)
 
@@ -147,12 +149,11 @@ if __name__ == "__main__":
                 json.dump(report, fd)
     
         # Print flow analysis results
-        print("{0:2d}. {}".format(flows_counter, resp+err))
+        print("{0:2d}. {1}".format(flows_counter, resp+err))
         flows_counter += 1
         inner_counter += 1
         
-
-# TODO: Statistiche su numero di anomalie, percentuali ecc..
+# TODO: Script per report, con statistiche su numero di anomalie, percentuali ecc..
 # TODO: creare utils.py con tutte le classi/funzioni che vengono condivise dai vari script
 # TODO: Support IPv6
 '''

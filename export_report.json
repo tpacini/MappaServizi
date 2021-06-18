@@ -1,0 +1,100 @@
+{
+    "10.42.0.130": {
+        "10.42.0.1": [
+            "",
+            35790,
+            "DNS",
+            "DNS.Amazon",
+            "DNS.NetFlix",
+            "DNS.AmazonVideo",
+            "DNS.Microsoft",
+            "DNS.GoogleServices",
+            "DNS.YouTube",
+            "DNS.Google",
+            "DNS.Wikipedia"
+        ],
+        "remote": [
+            "",
+            43165770,
+            "TLS.NetFlix",
+            "TLS.Amazon",
+            "HTTP.Google",
+            "HTTP",
+            "QUIC.YouTube",
+            "TLS.Google",
+            "QUIC.Google",
+            "TLS",
+            "TLS.GoogleServices",
+            "TLS.YouTube",
+            "QUIC.GoogleServices",
+            "TLS.Wikipedia",
+            "NTP.UbuntuONE"
+        ]
+    },
+    "10.42.0.96": {
+        "remote": [
+            "UNKNOWN SOURCE IP",
+            9156647,
+            "TLS.Amazon",
+            "Amazon",
+            "TLS.Messenger",
+            "TLS.YouTube",
+            "TLS.Google",
+            "MDNS",
+            "TLS.Facebook",
+            "TLS",
+            "Facebook",
+            "IGMP",
+            "TLS.GoogleServices",
+            "Telegram",
+            "QUIC.Google",
+            "QUIC.YouTube",
+            "SSDP",
+            "NTP.Google",
+            "IMAPS.Microsoft365",
+            "TLS.WhatsApp",
+            "QUIC.Facebook",
+            "HTTP.Google",
+            "QUIC.GoogleServices",
+            "TLS.Telegram"
+        ],
+        "10.42.0.1": [
+            "UNKNOWN SOURCE IP",
+            3171,
+            "DNS.Messenger",
+            "DNS.GoogleServices",
+            "DNS.WhatsApp",
+            "DNS.Facebook",
+            "DNS",
+            "DNS.YouTube",
+            "HTTP",
+            "DNS.Google"
+        ]
+    },
+    "remote": {
+        "10.42.0.96": [
+            "UNKNOWN DESTINATION IP",
+            2040,
+            "TLS.Amazon",
+            "TLS",
+            "Amazon"
+        ],
+        "remote": [
+            "UNKNOWN DESTINATION IP",
+            1056,
+            "DHCP"
+        ],
+        "10.42.0.130": [
+            "",
+            330,
+            "TLS.Amazon"
+        ]
+    },
+    "10.42.0.1": {
+        "10.42.0.96": [
+            "UNKNOWN DESTINATION IP",
+            1026,
+            "DHCP"
+        ]
+    }
+}
