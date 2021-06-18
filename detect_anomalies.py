@@ -9,7 +9,7 @@ DST_IP_ERR    = "UNKNOWN DESTINATION IP"
 SRC_IP_ERR    = "UNKNOWN SOURCE IP"
 
 flows_counter = 0   # number of analyzed flows
-report        = {}  # dictionary used for the final report
+report        = {"tot_flows":0, "":{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
 
 # Load the services map used as a reference to detect anomalies
 with open('export.json', 'r') as fd:
@@ -79,43 +79,30 @@ def check_flow(src_ip, dst_ip, app_name):
     return ""
 
 # Update a data structure dedicated to the final report (after an interruption like SIGINT)
-def update_report(err_id, src_ip, dst_ip, app_name, b_bytes, report_dict):
+def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
     try:
         dst_list = report_dict[src_ip]
 
          # If "src_ip" is a key, let's see if dst_ip already exists
         if dst_ip not in dst_list.keys():
-            dst_list[dst_ip] = [err_id, b_bytes, app_name]
+            dst_list[dst_ip] = [b_bytes, app_name]
         else:
             dst_list[dst_ip][1] += b_bytes
             # app_name never registered
             if app_name not in dst_list[dst_ip][2:]:
                 dst_list[dst_ip].append(app_name)
+        
+        dst_list["tot_bytes"] += b_bytes
 
     # "src_ip" key doesn't exists
     except KeyError:
         report_dict[src_ip] = {}
-        report_dict[src_ip][dst_ip] = [err_id, b_bytes, app_name]
+        report_dict[src_ip]["tot_bytes"] = b_bytes
+        report_dict[src_ip][dst_ip] = [b_bytes, app_name]
     
     return report_dict
 
 
-# Unused, take for the report script
-def print_report(report):
-    # For every source ip
-    for i in report.keys():
-        dst_list = report[i]
-        print("{0:15s} talks to: ".format(i))
-        
-        # For every destination ip
-        for j in dst_list.keys():
-            arr = dst_list[j]
-            print("\t--> {0:15s}, {1:20s}, Bytes:{2:9d}, {3:22s}".format(
-                j,
-                arr[2:],
-                arr[1],
-                arr[0]
-            ))
             
 
 if __name__ == "__main__":
@@ -139,9 +126,12 @@ if __name__ == "__main__":
         app_name = flow.application_name
         b_bytes  = int(flow.bidirectional_bytes)
         resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
-                
+        flows_counter += 1
+        
         err = check_flow(src_ip, dst_ip, app_name)
-        report = update_report(err, src_ip, dst_ip, app_name, b_bytes, report)
+        report = update_report(src_ip, dst_ip, app_name, b_bytes, report[err])
+        report["tot_flows"] = flows_counter
+
         # report dictionary persistence
         if inner_counter == 5:
             inner_counter = 0
@@ -150,17 +140,20 @@ if __name__ == "__main__":
     
         # Print flow analysis results
         print("{0:2d}. {1}".format(flows_counter, resp+err))
-        flows_counter += 1
+        
         inner_counter += 1
         
 # TODO: Script per report, con statistiche su numero di anomalie, percentuali ecc..
 # TODO: creare utils.py con tutte le classi/funzioni che vengono condivise dai vari script
 # TODO: Support IPv6
 '''
-src_ip: {
-    src_error: 1/0
-    dst_ip:[err_id, bytes, app_name]
-    dst_ip1:[err_id, bytes, app_name1, app_name2]
-    ....
+tot_flows: ...
+ERR1: {
+    src_ip1: {
+        tot_bytes: ...
+        dst_ip:[bytes, app_name]
+        dst_ip1:[bytes, app_name1, app_name2]
+        ...
+    }
 }
 '''
