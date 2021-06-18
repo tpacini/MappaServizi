@@ -85,7 +85,9 @@ def update_report(err_id, src_ip, dst_ip, app_name, b_bytes, report_dict):
         dst_list = report_dict[src_ip]
     # "src_ip" key doesn't exists
     except KeyError:
+        report_dict[src_ip] = {}
         report_dict[src_ip][dst_ip] = [err_id, b_bytes, app_name]
+        dst_list = report_dict[src_ip]
     
     # If "src_ip" is a key, let's see if dst_ip already exists
     if dst_ip not in dst_list.keys():
@@ -119,7 +121,7 @@ if __name__ == "__main__":
         interface = parse_cmdline_args(sys.argv[1:])
         my_streamer = nfstream.NFStreamer(source=interface,
             snapshot_length=1600,
-            idle_timeout=120,
+            idle_timeout=60, # set to 120, 60 for testing
             active_timeout=1800,
             udps=None)
 
@@ -132,13 +134,13 @@ if __name__ == "__main__":
             dst_ip   = check_address(flow.dst_ip)
             app_name = flow.application_name
             b_bytes  = int(flow.bidirectional_bytes)
-            resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
+            resp     = "{0:15s} --> {1:15s} , {2:15s} | ".format(src_ip, dst_ip, app_name)
             
             err = check_flow(src_ip, dst_ip, app_name)
             report = update_report(err, src_ip, dst_ip, app_name, b_bytes, report)
 
             # Print flow analysis results
-            print("{0:2d}. {}".format(flows_counter, resp+err))
+            print("{0:2d}. {1}".format(flows_counter, resp+err))
             flows_counter += 1
     except KeyboardInterrupt:
         print("\n++++++++++++++++++++++++++++++++++ REPORT ++++++++++++++++++++++++++++++++++")
