@@ -1,8 +1,7 @@
 import nfstream
 import json
 import sys
-import getopt
-from signal import signal, SIGINT
+import getopt   
 # from utils import ....
 
 APP_NAME_ERR = "PROTOCOL NEVER USED"
@@ -96,6 +95,8 @@ def update_report(err_id, src_ip, dst_ip, app_name, b_bytes, report_dict):
 
     return report_dict
 
+
+# Unused, take for the report script
 def print_report(report):
     # For every source ip
     for i in report.keys():
@@ -114,37 +115,40 @@ def print_report(report):
             
 
 if __name__ == "__main__":
-    try:
-        # Get interface name and activate the metering processes
-        interface = parse_cmdline_args(sys.argv[1:])
-        my_streamer = nfstream.NFStreamer(source=interface,
-            snapshot_length=1600,
-            idle_timeout=120,
-            active_timeout=1800,
-            udps=None)
+    inner_counter = 0
 
-        for flow in my_streamer:
-            # Doesn't count IPv6 addresses (TODO)
-            if ":" in flow.src_ip:
-                continue
+    # Get interface name and activate the metering processes
+    interface = parse_cmdline_args(sys.argv[1:])
+    my_streamer = nfstream.NFStreamer(source=interface,
+        snapshot_length=1600,
+        idle_timeout=120,
+        active_timeout=1800,
+        udps=None)
 
-            src_ip   = check_address(flow.src_ip) 
-            dst_ip   = check_address(flow.dst_ip)
-            app_name = flow.application_name
-            b_bytes  = int(flow.bidirectional_bytes)
-            resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
-            
-            err = check_flow(src_ip, dst_ip, app_name)
-            report = update_report(err, src_ip, dst_ip, app_name, b_bytes, report)
+    for flow in my_streamer:
+        # Doesn't count IPv6 addresses (TODO)
+        if ":" in flow.src_ip:
+            continue
 
-            # Print flow analysis results
-            print("{0:2d}. {}".format(flows_counter, resp+err))
-            flows_counter += 1
-    except KeyboardInterrupt:
-        print("\n++++++++++++++++++++++++++++++++++ REPORT ++++++++++++++++++++++++++++++++++")
-        print_report(report)
-        print("++++++++++++++++++++++++++++++++++ FINE REPORT +++++++++++++++++++++++++++++")
-        pass
+        src_ip   = check_address(flow.src_ip) 
+        dst_ip   = check_address(flow.dst_ip)
+        app_name = flow.application_name
+        b_bytes  = int(flow.bidirectional_bytes)
+        resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
+                
+        err = check_flow(src_ip, dst_ip, app_name)
+        report = update_report(err, src_ip, dst_ip, app_name, b_bytes, report)
+        # report dictionary persistence
+        if inner_counter == 5:
+            inner_counter = 0
+            with open('export_report.json', 'w') as fd:
+                json.dump(report, fd)
+    
+        # Print flow analysis results
+        print("{0:2d}. {}".format(flows_counter, resp+err))
+        flows_counter += 1
+        inner_counter += 1
+        
 
 # TODO: Statistiche su numero di anomalie, percentuali ecc..
 # TODO: creare utils.py con tutte le classi/funzioni che vengono condivise dai vari script
