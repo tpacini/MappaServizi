@@ -2,14 +2,11 @@ import nfstream
 import json
 import sys
 import getopt   
-# from utils import ....
+from utils import *
 
-APP_NAME_ERR  = "PROTOCOL NEVER USED"
-DST_IP_ERR    = "UNKNOWN DESTINATION IP"
-SRC_IP_ERR    = "UNKNOWN SOURCE IP"
 
 flows_counter = 0   # number of analyzed flows
-report        = {"tot_flows":0, "":{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
+report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
 
 # Load the services map used as a reference to detect anomalies
 with open('export.json', 'r') as fd:
@@ -44,23 +41,6 @@ def parse_cmdline_args(argv):
 
     return interface
 
-# Check if addr is a local or remote address
-def check_address(addr):
-    # Split the address and convert it to int
-    parts = list(map(int, addr.split(".")))
-    
-    # local address 10.0.0.0 - 10.255.255.255
-    if parts[0] == 10:
-        return addr
-    # local address 172.16.0.0 - 172.31.255.255
-    elif (parts[0] == 172) and (parts[1] >= 16) and (parts[1] <= 31):
-        return addr
-    # local address 192.168.0.0 - 192.168.255.55
-    elif (parts[0] == 192) and (parts[1] == 168):
-        return addr
-    else:
-        return "remote"
-
 # Based on source ip, destination ip and application name of the flow, check if 
 # the flow is an anomaly on the network
 def check_flow(src_ip, dst_ip, app_name):
@@ -76,7 +56,7 @@ def check_flow(src_ip, dst_ip, app_name):
     else:
         return SRC_IP_ERR
 
-    return ""
+    return NO_ERR
 
 # Update a data structure dedicated to the final report (after an interruption like SIGINT)
 def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
@@ -87,7 +67,7 @@ def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
         if dst_ip not in dst_list.keys():
             dst_list[dst_ip] = [b_bytes, app_name]
         else:
-            dst_list[dst_ip][1] += b_bytes
+            dst_list[dst_ip][0] += b_bytes
             # app_name never registered
             if app_name not in dst_list[dst_ip][2:]:
                 dst_list[dst_ip].append(app_name)
@@ -102,8 +82,6 @@ def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
     
     return report_dict
 
-
-            
 
 if __name__ == "__main__":
     inner_counter = 0
@@ -126,11 +104,12 @@ if __name__ == "__main__":
         app_name = flow.application_name
         b_bytes  = int(flow.bidirectional_bytes)
         resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
-        flows_counter += 1
         
         err = check_flow(src_ip, dst_ip, app_name)
-        report = update_report(src_ip, dst_ip, app_name, b_bytes, report[err])
-        report["tot_flows"] = flows_counter
+        report[err] = update_report(src_ip, dst_ip, app_name, b_bytes, report[err])
+        if err != NO_ERR:
+            report["tot_anom"] += 1
+        report["tot_flows"] += 1
 
         # report dictionary persistence
         if inner_counter == 5:
@@ -140,20 +119,8 @@ if __name__ == "__main__":
     
         # Print flow analysis results
         print("{0:2d}. {1}".format(flows_counter, resp+err))
-        
+        flows_counter += 1
         inner_counter += 1
         
-# TODO: Script per report, con statistiche su numero di anomalie, percentuali ecc..
 # TODO: creare utils.py con tutte le classi/funzioni che vengono condivise dai vari script
 # TODO: Support IPv6
-'''
-tot_flows: ...
-ERR1: {
-    src_ip1: {
-        tot_bytes: ...
-        dst_ip:[bytes, app_name]
-        dst_ip1:[bytes, app_name1, app_name2]
-        ...
-    }
-}
-'''

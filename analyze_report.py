@@ -1,24 +1,16 @@
-from detect_anomalies import APP_NAME_ERR
 import json
-from detect_anomalies import APP_NAME_ERR, DST_IP_ERR, SRC_IP_ERR
 
 with open('export_report.json', 'r') as fd:
     report = json.load(fd)
 
 def print_report(report):
     tot_flows = report["tot_flows"]
-    non_anom = 0
+    tot_anom = report["tot_anom"]
 
     # Keys are anomalies names
-    for i in report.keys()[1:]:
+    for i in list(report.keys())[2:]:
         flows = report[i]
-        if i == "":
-            # Count number of flows with no anomalies
-            for src_ips in flows.keys():
-                non_anom += len(flows[src_ips][1:])
-            print("+++++++ Normal flows +++++++")
-        else:
-            print("+++++++ {} flows +++++++".format(i))
+        print("\n+++++++ {} anomaly flows +++++++".format(i))
         
         for src_ip in flows.keys():
             dests = flows[src_ip]
@@ -26,16 +18,13 @@ def print_report(report):
             print("+ {0:15s} exchange {1:9d} bytes with: " \
                 .format(src_ip, tot_bytes))
             
-            for dst_ip in dests.keys()[1:]:
+            for dst_ip in list(dests.keys())[1:]:
                 b = dests[dst_ip][0]
                 perc = (b*100)/tot_bytes
-                print("\t - {0:15s}, {1:9d} bytes ({2:3.2f}%) using {}") \
-                    .format(dst_ip, b, perc)    
+                print("\t - {0:15s}, {1:9d} bytes ({2:3.2f}%) using {3}" \
+                    .format(dst_ip, b, perc, dests[dst_ip][1:]))    
 
-    print("+++++++ On {} flows, {} anomalies +++++++".format(tot_flows,
-        tot_flows - non_anom))
-
+    print("\n+++++++ On {} flows, {} anomalies +++++++".format(tot_flows, tot_anom))
 
 if __name__ == '__main__':
-
     print_report(report)
