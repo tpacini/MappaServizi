@@ -143,6 +143,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n++++++++++++++++++++++++++++++++++ REPORT ++++++++++++++++++++++++++++++++++")
         print_report(report)
+        print("++++++++++++++++++++++++++++++++++ FINE REPORT +++++++++++++++++++++++++++++")
         pass
 
 # TODO: Statistiche su numero di anomalie, percentuali ecc..
