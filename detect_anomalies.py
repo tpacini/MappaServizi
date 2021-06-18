@@ -2,8 +2,11 @@ import nfstream
 import json
 import sys
 import getopt   
-from utils import *
 
+APP_NAME_ERR  = "PROTOCOL NEVER USED"
+DST_IP_ERR    = "UNKNOWN DESTINATION IP"
+SRC_IP_ERR    = "UNKNOWN SOURCE IP"
+NO_ERR        = "NONE"
 
 flows_counter = 0   # number of analyzed flows
 report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
@@ -12,17 +15,36 @@ report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, APP_NAME_ERR:{}, DST_IP
 with open('export.json', 'r') as fd:
     services_map = json.load(fd)
 
+# Check if addr is a local or remote address
+def check_address(addr):
+    # Split the address and convert it to int
+    parts = list(map(int, addr.split(".")))
+    
+    # local address 10.0.0.0 - 10.255.255.255
+    if parts[0] == 10:
+        return addr
+    # local address 172.16.0.0 - 172.31.255.255
+    elif (parts[0] == 172) and (parts[1] >= 16) and (parts[1] <= 31):
+        return addr
+    # local address 192.168.0.0 - 192.168.255.55
+    elif (parts[0] == 192) and (parts[1] == 168):
+        return addr
+    else:
+        return "remote"
+
 # Parse command-line arguments
 def parse_cmdline_args(argv):
     interface = "null"
+    usage_str = "Usage: detect_anomalies.py -i <interface>\n" + \
+                " "*7 + "detect_anomalies.py -a"
 
     # No arguments/flag in input
     if len(argv) == 0:
-        print("Usage: detect_anomalies.py -i <interface>")
+        print(usage_str)
         sys.exit()
 
     try:
-        opts, args = getopt.getopt(argv, "hi:", ["help=", "interface="])
+        opts, args = getopt.getopt(argv, "ahi:", ["help=", "interface=", "analyze="])
     except getopt.GetoptError:
         print("Error")
         sys.exit(2)
@@ -30,16 +52,46 @@ def parse_cmdline_args(argv):
     # Parsing arguments
     for opt, arg in opts:
         if opt in ['-h', '--help']:
-            print("Usage: detect_anomalies.py -i <interface>")
+            print(usage_str)
             sys.exit()
         elif opt in ['-i', '--interface']:
             interface = arg
+        elif opt in ['-a', '--analyze_report']:
+            print_report()
+            exit(0)
 
     if interface == "null":
-        print("Usage: detect_anomalies.py -i <interface>")
+        print(usage_str)
         sys.exit()
 
     return interface
+
+def print_report():
+    #TODO: Fare controllo su esistenza del file
+    with open('export_report.json', 'r') as fd:
+        report = json.load(fd)
+
+    tot_flows = report["tot_flows"]
+    tot_anom = report["tot_anom"]
+
+    # Keys are anomalies names
+    for i in list(report.keys())[2:]:
+        flows = report[i]
+        print("\n+++++++ {} anomaly flows +++++++".format(i))
+        
+        for src_ip in flows.keys():
+            dests = flows[src_ip]
+            tot_bytes = dests["tot_bytes"]
+            print("+ {0:15s} exchange {1:9d} bytes with: " \
+                .format(src_ip, tot_bytes))
+            
+            for dst_ip in list(dests.keys())[1:]:
+                b = dests[dst_ip][0]
+                perc = (b*100)/tot_bytes
+                print("\t - {0:15s}, {1:9d} bytes ({2:3.2f}%) using {3}" \
+                    .format(dst_ip, b, perc, dests[dst_ip][1:]))    
+
+    print("\n+++++++ On {} flows, {} anomalies +++++++".format(tot_flows, tot_anom))
 
 # Based on source ip, destination ip and application name of the flow, check if 
 # the flow is an anomaly on the network
@@ -122,5 +174,17 @@ if __name__ == "__main__":
         flows_counter += 1
         inner_counter += 1
         
-# TODO: creare utils.py con tutte le classi/funzioni che vengono condivise dai vari script
 # TODO: Support IPv6
+# TODO: Aggiungere un flag che incorpori lo script report_analyze, così da non dover eseguire mille script diversi
+'''
+tot_flows: ...
+tot_anom; ...
+ERR1: {
+    src_ip1: {
+        tot_bytes: ...
+        dst_ip:[bytes, app_name]
+        dst_ip1:[bytes, app_name1, app_name2]
+        ...
+    }
+}
+'''
