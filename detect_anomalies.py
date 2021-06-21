@@ -2,39 +2,19 @@ import nfstream
 import json
 import sys
 import getopt   
+import pandas as pd
+from flows_capture import OUT_FILENAME
+from pyvis import network as net
 
-APP_NAME_ERR  = "PROTOCOL NEVER USED"
-DST_IP_ERR    = "UNKNOWN DESTINATION IP"
-SRC_IP_ERR    = "UNKNOWN SOURCE IP"
-NO_ERR        = "NONE"
+APP_NAME_ERR      = "PROTOCOL NEVER USED"
+DST_IP_ERR        = "UNKNOWN DESTINATION IP"
+SRC_IP_ERR        = "UNKNOWN SOURCE IP"
+NO_ERR            = "NONE"
+REPORT_FILENAME   = "report.json"
+SERV_MAP_FILENAME = "services_map.json"
 
 flows_counter = 0   # number of analyzed flows
 report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
-
-# Load the services map used as a reference to detect anomalies
-with open('export.json', 'r') as fd:
-    services_map = json.load(fd)
-
-# Check if addr is a local or remote address
-def check_address(addr):
-    # IPv6 address
-    if ":" in addr:
-        return addr
-        
-    # Split the address and convert it to int
-    parts = list(map(int, addr.split(".")))
-    
-    # local address 10.0.0.0 - 10.255.255.255
-    if parts[0] == 10:
-        return addr
-    # local address 172.16.0.0 - 172.31.255.255
-    elif (parts[0] == 172) and (parts[1] >= 16) and (parts[1] <= 31):
-        return addr
-    # local address 192.168.0.0 - 192.168.255.55
-    elif (parts[0] == 192) and (parts[1] == 168):
-        return addr
-    else:
-        return "remote"
 
 # Parse command-line arguments
 def parse_cmdline_args(argv):
@@ -70,10 +50,107 @@ def parse_cmdline_args(argv):
 
     return interface
 
+
+# Generate the data structure describing the services map
+# Template: {"src1":{"dst1":[n_bytes, app1, app2], "dst2":n_bytes, ...}, "src2":...... }
+# All the remote addresses end up in "remote" address (source and destination)
+def generate_services_map():
+    # Load the dataset 
+    try:
+        df = pd.read_csv(OUT_FILENAME)
+    except FileNotFoundError:
+        print("File not found.")
+        exit(0)
+
+    # Drop the useless columns
+    df.drop(["Unnamed: 0", "src_oui", "dst_oui", "id", "expiration_id","client_fingerprint", 
+    "server_fingerprint", "src_mac", "dst_mac", "vlan_id", "tunnel_id", "expiration_id","client_fingerprint", 
+    "server_fingerprint", "user_agent", "bidirectional_first_seen_ms", "bidirectional_last_seen_ms", 
+    "bidirectional_duration_ms", "dst2src_packets", "dst2src_packets", "dst2src_first_seen_ms", "dst2src_last_seen_ms", 
+    "dst2src_duration_ms", "src2dst_first_seen_ms", "src2dst_last_seen_ms", "src2dst_duration_ms", "src2dst_packets", 
+    "src2dst_bytes", "dst2src_bytes", "bidirectional_packets"], axis=1, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+
+    # Generate the dedicated data structure
+    sources = {}
+    src_ips = df.src_ip.unique()
+
+    for i in src_ips:
+        temp = df[df['src_ip'] == i]
+        i = check_address(i)
+        aux_dict = {}
+
+        for index, row in temp.iterrows():
+            dst_ip = check_address(row['dst_ip'])
+            b_bytes = row['bidirectional_bytes']
+            app_name = row['application_name']
+            
+            try:
+                pres = aux_dict[dst_ip]
+                pres[0] += int(b_bytes)
+                if not app_name in pres:
+                    pres.append(app_name) 
+            except KeyError:
+                aux_dict[dst_ip] = [int(b_bytes), app_name]
+                
+        sources[i] = aux_dict
+
+    # Save the services map in a json file
+    with open(SERV_MAP_FILENAME, 'w') as fd:
+        json.dump(sources, fd)
+
+
+# Create and show an interactive graph, representing the services map
+def visualize_map(sources):
+    g=net.Network(height='500px', width='800px',heading='')
+    g.add_nodes(sources.keys())
+
+    # Add edges
+    # First try without weights
+    for i in sources.keys():
+        elem = sources[i]
+        g.add_nodes(elem.keys())
+        for j in elem.keys(): 
+            g.add_edge(i, j)
+
+    # g.save_graph('example.html')
+    g.show('example.html')
+
+
+# Check if addr is a local or remote address. Remote address ends up
+# under "remote" address while the local and IPv6 addresses remain 
+# unchanged.
+def check_address(addr):
+    # IPv6 address
+    if ":" in addr:
+        return addr
+
+    parts = addr.split(".")
+    # Convert string to int
+    for i in range(0, len(parts)):
+        parts[i] = int(parts[i])
+    
+    # local address 10.0.0.0 - 10.255.255.255
+    if parts[0] == 10:
+        return addr
+    # local address 172.16.0.0 - 172.31.255.255
+    elif (parts[0] == 172) and (parts[1] >= 16) and (parts[1] <= 31):
+        return addr
+    # local address 192.168.0.0 - 192.168.255.55
+    elif (parts[0] == 192) and (parts[1] == 168):
+        return addr
+    else:
+        return "remote"
+
+
+# Print the report of flows seen
 def print_report():
-    #TODO: Fare controllo su esistenza del file
-    with open('export_report.json', 'r') as fd:
-        report = json.load(fd)
+    try:
+        with open(REPORT_FILENAME, 'r') as fd:
+            report = json.load(fd)
+    except FileNotFoundError:
+        print("Report file not found. Exiting...")
+        exit(0)
 
     tot_flows = report["tot_flows"]
     tot_anom = report["tot_anom"]
@@ -97,6 +174,7 @@ def print_report():
 
     print("\n+++++++ On {} flows, {} anomalies +++++++".format(tot_flows, tot_anom))
 
+
 # Based on source ip, destination ip and application name of the flow, check if 
 # the flow is an anomaly on the network
 def check_flow(src_ip, dst_ip, app_name):
@@ -114,7 +192,20 @@ def check_flow(src_ip, dst_ip, app_name):
 
     return NO_ERR
 
-# Update a data structure dedicated to the final report (after an interruption like SIGINT)
+
+# Update a data structure dedicated to the final report
+'''
+tot_flows: ...
+tot_anom; ...
+ERR1: {
+    src_ip1: {
+        tot_bytes: ...
+        dst_ip:[bytes, app_name]
+        dst_ip1:[bytes, app_name1, app_name2]
+        ...
+    }
+}
+'''
 def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
     try:
         dst_list = report_dict[src_ip]
@@ -142,14 +233,26 @@ def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
 if __name__ == "__main__":
     inner_counter = 0
 
-    # Get interface name and activate the metering processes
+    # Get capture interface name
     interface = parse_cmdline_args(sys.argv[1:])
+    
+    # Generate the services map and load it, used as a reference to detect anomalies
+    generate_services_map()
+    try:
+        with open(SERV_MAP_FILENAME, 'r') as fd:
+            services_map = json.load(fd)
+    except FileNotFoundError:
+        print("Services map file not found. Exiting..")
+        exit(0)
+
+    # Activate the metering processes    
     my_streamer = nfstream.NFStreamer(source=interface,
         snapshot_length=1600,
         idle_timeout=60, # set to 120, 60 for testing
         active_timeout=1800,
         udps=None)
 
+    # Start analyzing incoming flows
     for flow in my_streamer:
         src_ip   = check_address(flow.src_ip) 
         dst_ip   = check_address(flow.dst_ip)
@@ -166,24 +269,12 @@ if __name__ == "__main__":
         # Periodical persistence of report
         if inner_counter == 5:
             inner_counter = 0
-            with open('export_report.json', 'w') as fd:
+            with open(REPORT_FILENAME, 'w') as fd:
                 json.dump(report, fd)
     
         # Print flow analysis results
-        print("{0:2d}. {1}".format(flows_counter, resp+err))
+        print("{0:3d}. {1}".format(flows_counter, resp+err))
         flows_counter += 1
         inner_counter += 1
-        
-# TODO: Support IPv6
-'''
-tot_flows: ...
-tot_anom; ...
-ERR1: {
-    src_ip1: {
-        tot_bytes: ...
-        dst_ip:[bytes, app_name]
-        dst_ip1:[bytes, app_name1, app_name2]
-        ...
-    }
-}
-'''
+
+# TODO: Services map related to a certain local ip, in this case 10.42.0.130.
