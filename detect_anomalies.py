@@ -17,6 +17,10 @@ with open('export.json', 'r') as fd:
 
 # Check if addr is a local or remote address
 def check_address(addr):
+    # IPv6 address
+    if ":" in addr:
+        return addr
+        
     # Split the address and convert it to int
     parts = list(map(int, addr.split(".")))
     
@@ -147,10 +151,6 @@ if __name__ == "__main__":
         udps=None)
 
     for flow in my_streamer:
-        # Doesn't count IPv6 addresses (TODO)
-        if ":" in flow.src_ip:
-            continue
-
         src_ip   = check_address(flow.src_ip) 
         dst_ip   = check_address(flow.dst_ip)
         app_name = flow.application_name
@@ -163,7 +163,7 @@ if __name__ == "__main__":
             report["tot_anom"] += 1
         report["tot_flows"] += 1
 
-        # report dictionary persistence
+        # Periodical persistence of report
         if inner_counter == 5:
             inner_counter = 0
             with open('export_report.json', 'w') as fd:
@@ -175,7 +175,6 @@ if __name__ == "__main__":
         inner_counter += 1
         
 # TODO: Support IPv6
-# TODO: Aggiungere un flag che incorpori lo script report_analyze, così da non dover eseguire mille script diversi
 '''
 tot_flows: ...
 tot_anom; ...
