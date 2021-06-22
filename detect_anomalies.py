@@ -71,6 +71,10 @@ def generate_services_map():
     "src2dst_bytes", "dst2src_bytes", "bidirectional_packets"], axis=1, inplace=True)
     df.reset_index(drop=True, inplace=True)
 
+    # Filter on address of analysed devices
+    d_addr = '10.42.0.130'
+    df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
+
     # Generate the dedicated data structure
     sources = {}
     src_ips = df.src_ip.unique()
@@ -238,6 +242,7 @@ if __name__ == "__main__":
     
     # Generate the services map and load it, used as a reference to detect anomalies
     generate_services_map()
+
     try:
         with open(SERV_MAP_FILENAME, 'r') as fd:
             services_map = json.load(fd)

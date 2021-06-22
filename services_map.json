@@ -1,61 +1,43 @@
 {
-    "10.42.0.1": {
-        "remote": [
-            1206,
-            "MDNS"
-        ]
-    },
     "10.42.0.130": {
         "10.42.0.1": [
             119296,
             "DNS",
-            "DNS.Amazon",
-            "DNS.AmazonVideo",
-            "DNS.Google",
-            "DNS.YouTube",
-            "DNS.NetFlix",
             "DNS.GoogleServices",
-            "DNS.Twitch",
+            "DNS.Amazon",
+            "DNS.YouTube",
+            "DNS.AmazonVideo",
+            "DNS.NetFlix",
             "DNS.Microsoft",
+            "DNS.Google",
+            "DNS.Twitch",
             "DHCP"
         ],
         "remote": [
             488956708,
-            "TLS.AmazonVideo",
-            "TLS.Amazon",
+            "TLS.NetFlix",
+            "MDNS",
             "TLS.GoogleServices",
             "TLS",
+            "TLS.Amazon",
             "HTTP",
-            "HTTP.Amazon",
-            "TLS.Google",
-            "QUIC.Google",
-            "TLS.YouTube",
             "HTTP.Google",
+            "TLS.AmazonVideo",
+            "HTTP.Amazon",
+            "QUIC.YouTube",
+            "QUIC.Google",
+            "QUIC.GoogleServices",
+            "TLS.Google",
+            "TLS.YouTube",
             "HTTP.Cloudflare",
             "TLS.Twitch",
-            "QUIC.GoogleServices",
-            "QUIC.YouTube",
-            "MDNS",
-            "ICMP.Google",
-            "TLS.NetFlix"
+            "ICMP.Google"
         ]
     },
     "remote": {
         "10.42.0.130": [
             858,
             "TLS.Amazon"
-        ]
-    },
-    "fe80::2cd0:25b4:1b3b:5169": {
-        "ff02::fb": [
-            1284,
-            "MDNS"
-        ]
-    },
-    "fe80::aba5:3795:c21b:6a98": {
-        "ff02::fb": [
-            1326,
-            "MDNS"
         ]
     }
 }
