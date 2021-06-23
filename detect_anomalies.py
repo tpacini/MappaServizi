@@ -12,6 +12,7 @@ SRC_IP_ERR        = "UNKNOWN SOURCE IP"
 NO_ERR            = "NONE"
 REPORT_FILENAME   = "report.json"
 SERV_MAP_FILENAME = "services_map.json"
+DEVICE_IPS        = ["10.42.0.130"]
 
 flows_counter = 0   # number of analyzed flows
 report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
@@ -71,9 +72,9 @@ def generate_services_map():
     "src2dst_bytes", "dst2src_bytes", "bidirectional_packets"], axis=1, inplace=True)
     df.reset_index(drop=True, inplace=True)
 
-    # Filter on address of analysed devices
-    d_addr = '10.42.0.130'
-    df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
+    # Filter on address of analysed device(s)
+    for d_addr in DEVICE_IPS:
+        df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
 
     # Generate the dedicated data structure
     sources = {}
@@ -261,6 +262,11 @@ if __name__ == "__main__":
     for flow in my_streamer:
         src_ip   = check_address(flow.src_ip) 
         dst_ip   = check_address(flow.dst_ip)
+        
+        # If the flow is not about the analyzed device(s), skip it
+        if (src_ip not in DEVICE_IPS) and (dst_ip not in DEVICE_IPS):
+            continue 
+
         app_name = flow.application_name
         b_bytes  = int(flow.bidirectional_bytes)
         resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
