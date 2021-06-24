@@ -234,6 +234,14 @@ def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
     
     return report_dict
 
+def bpf_string(addresses):
+    filter_str = ""
+
+    for addr in addresses:
+        filter_str += "dst host " + addr + " or " + "src host " + addr + " or "
+
+
+    return filter_str[:-4]
 
 if __name__ == "__main__":
     inner_counter = 0
@@ -253,6 +261,7 @@ if __name__ == "__main__":
 
     # Activate the metering processes    
     my_streamer = nfstream.NFStreamer(source=interface,
+        bpf_filter = bpf_string(DEVICE_IPS), # filter the traffic on src/dst ip
         snapshot_length=1600,
         idle_timeout=60, # set to 120, 60 for testing
         active_timeout=1800,
@@ -262,11 +271,6 @@ if __name__ == "__main__":
     for flow in my_streamer:
         src_ip   = check_address(flow.src_ip) 
         dst_ip   = check_address(flow.dst_ip)
-        
-        # If the flow is not about the analyzed device(s), skip it
-        if (src_ip not in DEVICE_IPS) and (dst_ip not in DEVICE_IPS):
-            continue 
-
         app_name = flow.application_name
         b_bytes  = int(flow.bidirectional_bytes)
         resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
