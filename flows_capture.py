@@ -4,7 +4,7 @@ import sys, getopt
 OUT_FILENAME = 'capture_results.csv'
 
 # Export the received flows in the ".csv" format
-def print_pandas_flows(my_streamer, out_file):
+def print_pandas_flows(my_streamer):
     df = my_streamer.to_pandas()
     df.to_csv('./' + OUT_FILENAME)
 
