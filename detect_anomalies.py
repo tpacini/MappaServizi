@@ -3,16 +3,17 @@ import json
 import sys
 import getopt   
 import pandas as pd
-from flows_capture import OUT_FILENAME
-from pyvis import network as net
 
-APP_NAME_ERR      = "PROTOCOL NEVER USED"
-DST_IP_ERR        = "UNKNOWN DESTINATION IP"
-SRC_IP_ERR        = "UNKNOWN SOURCE IP"
-NO_ERR            = "NONE"
-REPORT_FILENAME   = "report.json"
-SERV_MAP_FILENAME = "services_map.json"
-DEVICE_IPS        = ["10.42.0.130"]
+with open('config.json', 'r') as fd:
+    j = json.load(fd)
+    APP_NAME_ERR      = j["app_name_error"]
+    DST_IP_ERR        = j["dst_ip_error"]
+    SRC_IP_ERR        = j["src_ip_error"]
+    NO_ERR            = j["no_error"]
+    REPORT_FILENAME   = j["report_file"]
+    SERV_MAP_FILENAME = j["servmap_file"]
+    DEVICE_IPS        = j["device_ips"]
+    OUT_FILENAME      = j["out_file"]
 
 flows_counter = 0   # number of analyzed flows
 report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
@@ -53,7 +54,6 @@ def parse_cmdline_args(argv):
 
 
 # Generate the data structure describing the services map
-# Template: {"src1":{"dst1":[n_bytes, app1, app2], "dst2":n_bytes, ...}, "src2":...... }
 # All the remote addresses end up in "remote" address (source and destination)
 def generate_services_map():
     # Load the dataset 
@@ -103,23 +103,6 @@ def generate_services_map():
     # Save the services map in a json file
     with open(SERV_MAP_FILENAME, 'w') as fd:
         json.dump(sources, fd)
-
-
-# Create and show an interactive graph, representing the services map
-def visualize_map(sources):
-    g=net.Network(height='500px', width='800px',heading='')
-    g.add_nodes(sources.keys())
-
-    # Add edges
-    # First try without weights
-    for i in sources.keys():
-        elem = sources[i]
-        g.add_nodes(elem.keys())
-        for j in elem.keys(): 
-            g.add_edge(i, j)
-
-    # g.save_graph('example.html')
-    g.show('example.html')
 
 
 # Check if addr is a local or remote address. Remote address ends up
@@ -199,18 +182,6 @@ def check_flow(src_ip, dst_ip, app_name):
 
 
 # Update a data structure dedicated to the final report
-'''
-tot_flows: ...
-tot_anom; ...
-ERR1: {
-    src_ip1: {
-        tot_bytes: ...
-        dst_ip:[bytes, app_name]
-        dst_ip1:[bytes, app_name1, app_name2]
-        ...
-    }
-}
-'''
 def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
     try:
         dst_list = report_dict[src_ip]
@@ -234,6 +205,8 @@ def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
     
     return report_dict
 
+
+# Generate the string for bpf filter
 def bpf_string(addresses):
     filter_str = ""
 
@@ -244,14 +217,13 @@ def bpf_string(addresses):
     return filter_str[:-4]
 
 if __name__ == "__main__":
-    inner_counter = 0
-
     # Get capture interface name
     interface = parse_cmdline_args(sys.argv[1:])
-    
+    inner_counter = 0
+
     # Generate the services map and load it, used as a reference to detect anomalies
     generate_services_map()
-
+    
     try:
         with open(SERV_MAP_FILENAME, 'r') as fd:
             services_map = json.load(fd)
@@ -291,5 +263,3 @@ if __name__ == "__main__":
         print("{0:3d}. {1}".format(flows_counter, resp+err))
         flows_counter += 1
         inner_counter += 1
-
-# TODO: Services map related to a certain local ip, in this case 10.42.0.130.

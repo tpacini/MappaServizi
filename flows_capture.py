@@ -1,12 +1,15 @@
 import nfstream
 import sys, getopt
+import json
 
-OUT_FILENAME = 'capture_results.csv'
+with open('config.json', 'r') as fd:
+    j = json.load(fd)
+    OUT_FILENAME = j['out_file']
 
 # Export the received flows in the ".csv" format
 def print_pandas_flows(my_streamer):
     df = my_streamer.to_pandas()
-    df.to_csv('./' + OUT_FILENAME)
+    df.to_csv(OUT_FILENAME)
 
 # Parse command-line arguments
 def parse_cmdline_args(argv):
@@ -51,6 +54,7 @@ if __name__ == "__main__":
             udps=None,
             statistical_analysis=False)
 
+    # Export the flows using pandas in a .csv format
     print_pandas_flows(my_streamer)
 
 
