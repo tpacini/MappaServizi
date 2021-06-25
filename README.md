@@ -1,38 +1,62 @@
-Eseguire `sudo flows_capture.py -i eth0 -o output` per catturare il traffico dall'interfaccia `eth0` e ottenere in output un file `output.csv` contenente i flussi generati. I permessi di superutente sono necessari per attivare la cattura, altrimenti la *sonda* non funziona. 
+# Introduzione
+Questo progetto ha come obiettivo la creazione di uno script in grado di rilevare anomalie basandosi su *una mappa dei servizi.* 
 
-A questo punto si può eseguire `sudo detect_anomalies.py -i eth0` per generare una mappa dei servizi, che descrive il comportamento della rete (ip sorgente, ip destinazione e protocollo utilizzato), dal file output.csv e per iniziare a catturare i pacchetti attraverso l'interfaccia `eth0` e ottenere poi i flussi corrispondenti, lo script in tempo reale analizza le informazioni del flusso e controlla la presenza di anomalie. Per ogni flusso analizzato, stampa il risultato:
+L'idea è di: 
+1. esaminare il comportamento della rete andando a catturare il traffico e generando, tramite la libreria *nfstream*, i flussi relativi ai pacchetti.
+
+2. Creare una mappa dei servizi in base ai flussi e utilizzarla come filtro per individuare eventuali anomalie (protocollo mai osservato all'interno della rete, ip sorgente sconosciuto....)
+
+
+In questo caso è stato analizzato un solo dispositivo, e la mappa dei servizi che otteniamo può essere rappresentata da un grafo in cui i nodi sono gli host locali (gli host remoti sono stati aggregati utilizzando l'indirizzo "remote") e gli archi indicano che i nodi hanno ricevuto/inviato dei dati:
+
+![graph](/output/servmap_graph.png)
+
+
+## Prerequisiti
+Per poter eseguire correttamente gli script è necessario installare *nfstream* con il seguente comando:
+
+`sudo pip3 install nfstream`
+
+**IMPORTANTE:** bisogna eseguire il comando con i permessi di superutente.
+
+# Esecuzione
+*Nota: Il file `config.json` contiene dei parametri utilizzati dagli script come ad esempio il nome dei file di output.*
+
+Inizialmente eseguire `sudo flows_capture.py -i eth0` per catturare il traffico dall'interfaccia `eth0` e ottenere in output un file contenente i flussi generati. I permessi di superutente sono necessari per attivare la cattura sull'interfaccia di rete.
+
+A questo punto si può eseguire `sudo detect_anomalies.py -i eth0` per generare una mappa dei servizi, che descrive il "comportamento" (ip sorgente, ip destinazione e protocollo utilizzato) dei dispositivi analizzati, e per iniziare a catturare i pacchetti attraverso l'interfaccia `eth0`; lo script in tempo reale analizza le informazioni dei flussi, ottenuti dai pacchetti, e controlla la presenza di anomalie. Per ogni flusso analizzato verrà mostrato un risultato:
 
 ```
-68. 10.42.0.130     --> remote          , TLS.Twitch           | NONE
-69. 10.42.0.130     --> remote          , TLS.Twitch           | NONE
-70. 10.42.0.130     --> remote          , TLS.Twitch           | NONE
-71. 10.42.0.130     --> 10.42.0.1       , DNS                  | NONE
-72. 10.42.0.130     --> 10.42.0.1       , DNS                  | NONE
-73. 10.42.0.130     --> 10.42.0.1       , DNS.Amazon           | NONE
-74. 10.42.0.130     --> 10.42.0.1       , DNS.Amazon           | NONE
-75. 10.42.0.130     --> remote          , STUN                 | PROTOCOL NEVER USED
-76. 10.42.0.130     --> remote          , ICMP                 | PROTOCOL NEVER USED
+1.  10.42.0.130     --> remote          , TLS.Twitch           | NONE
+2.  10.42.0.130     --> remote          , TLS.Twitch           | NONE
+3.  10.42.0.130     --> remote          , TLS.Twitch           | NONE
+4.  10.42.0.130     --> 10.42.0.1       , DNS                  | NONE
+5.  10.42.0.130     --> 10.42.0.1       , DNS                  | NONE
+6.  10.42.0.130     --> 10.42.0.1       , DNS.Amazon           | NONE
+7.  10.42.0.130     --> 10.42.0.1       , DNS.Amazon           | NONE
+8.  10.42.0.130     --> remote          , STUN                 | PROTOCOL NEVER USED
+9.  10.42.0.130     --> remote          , ICMP                 | PROTOCOL NEVER USED
 
-467. 10.42.0.130     --> remote          , TLS.eBay             | PROTOCOL NEVER USED
-468. 10.42.0.130     --> 10.42.0.1       , DNS.eBay             | PROTOCOL NEVER USED
-469. 10.42.0.130     --> 10.42.0.1       , DNS                  | NONE
-470. 10.42.0.130     --> remote          , HTTP                 | NONE
+10.  10.42.0.130     --> remote          , TLS.eBay             | PROTOCOL NEVER USED
+11.  10.42.0.130     --> 10.42.0.1       , DNS.eBay             | PROTOCOL NEVER USED
+12.  10.42.0.130     --> 10.42.0.1       , DNS                  | NONE
+13.  10.42.0.130     --> remote          , HTTP                 | NONE
 
-979. fe80::aba5:3795:c21b:6a98 --> ff02::fb        , MDNS                 | NONE
-980. 10.42.0.1       --> remote          , MDNS                 | NONE
-981. 10.42.0.130     --> remote          , MDNS                 | NONE
-982. ::              --> ff02::1:ffb9:81ba , ICMPV6               | UNKNOWN SOURCE IP
-983. 10.42.0.1       --> 10.42.0.96      , ICMP                 | UNKNOWN DESTINATION IP
-984. 10.42.0.96      --> remote          , IGMP                 | UNKNOWN SOURCE IP
-985. 10.42.0.96      --> remote          , HTTP.Google          | UNKNOWN SOURCE IP
-986. 10.42.0.96      --> 10.42.0.1       , DNS.GoogleServices   | UNKNOWN SOURCE IP
-987. 10.42.0.96      --> remote          , TLS.GoogleServices   | UNKNOWN SOURCE IP
-988. fe80::2a16:7fff:feb9:81ba --> ff02::16        , ICMPV6               | UNKNOWN SOURCE IP
-989. remote          --> remote          , DHCP                 | UNKNOWN DESTINATION IP
-990. fe80::2a16:7fff:feb9:81ba --> ff02::16        , ICMPV6               | UNKNOWN SOURCE IP
+14.  fe80::aba5:3795:c21b:6a98 --> ff02::fb        , MDNS                 | NONE
+15.  10.42.0.1       --> remote          , MDNS                 | NONE
+16.  10.42.0.130     --> remote          , MDNS                 | NONE
+17.  ::              --> ff02::1:ffb9:81ba , ICMPV6               | UNKNOWN SOURCE IP
+18.  10.42.0.1       --> 10.42.0.96      , ICMP                 | UNKNOWN DESTINATION IP
+19.  10.42.0.96      --> remote          , IGMP                 | UNKNOWN SOURCE IP
+20.  10.42.0.96      --> remote          , HTTP.Google          | UNKNOWN SOURCE IP
+21.  10.42.0.96      --> 10.42.0.1       , DNS.GoogleServices   | UNKNOWN SOURCE IP
+22.  10.42.0.96      --> remote          , TLS.GoogleServices   | UNKNOWN SOURCE IP
+23.  fe80::2a16:7fff:feb9:81ba --> ff02::16        , ICMPV6               | UNKNOWN SOURCE IP
+24.  remote          --> remote          , DHCP                 | UNKNOWN DESTINATION IP
+25.  fe80::2a16:7fff:feb9:81ba --> ff02::16        , ICMPV6               | UNKNOWN SOURCE IP
 ```
 
-Periodicamente il report della cattura viene salvato in locale e una volta terminata, è possibile visualizzarlo eseguendo `detect_anomalies.py` con il flag `-a`:
+Periodicamente un report delle anomalie viene salvato in locale. Una volta terminata la cattura, è possibile visualizzarlo eseguendo `detect_anomalies.py` con il flag `-a` (*sudo* non necessario):
 
 ```
 +++++++ NONE anomaly flows +++++++
