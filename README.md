@@ -13,38 +13,42 @@ Per poter eseguire correttamente gli script è necessario installare *nfstream* 
 
 **IMPORTANTE:** bisogna eseguire il comando con i permessi di superutente.
 
-Durante i test, gli script sono stati eseguiti su una macchina che aveva il ruolo di hotspot. In questo modo connettendo il dispositivo da analizzare alla macchina è possibile catturare i pacchetti dall'interfaccia wifi. 
+Durante i test, gli script sono stati eseguiti su una macchina differente dal dispositivo da analizzare. Grazie alla possibilità di trasformare l'interfaccia wifi in un hotspot, è stato inoltre possibile eseguire i test su una sottorete locale (10.0.0.0/8) in cui questo dispositivo aveva il ruolo di router.
+
+Questa impostazione è solo una delle tante possibili, invece che eseguire gli script sul "router" è anche possibile analizzare i pacchetti della rete inoltrando il traffico su una certa porta del router su cui sarà connesso il dispositivo che eseguirà gli script (molto più vicino ad uno scenario reale in cui difficilmente un router esegue numerose operazioni vista la scarsa capacità computazionale).
+
+Infine, anche se non è mai stato testato, è possibile, dopo aver generato la mappa dei servizi, individuare le anomalie di un file .pcap, passando come argomento al flag `-i` il percorso assoluto o relativo del file. 
 
 # Metodologia e risultati
 Lo scopo del programma è individuare delle anomalie sulla rete, relative a uno o più dispositivi. Per fare ciò viene utilizzata una mappa dei servizi cioè una struttura dati che descrive quali host hanno comunicato tra di loro e quali protocolli sono stati utilizzati, nel nostro caso ad esempio *10.42.0.130* ha inviato solo richieste DNS a *10.42.0.1* mentre *remote* ha comunicato con *10.42.0.130* solo tramite TLS.
 
 ## Mappa dei servizi 
-La mappa dei servizi è un file json (*services_map.json*) che ha come chiavi l'ip sorgente, per ogni ip sorgente ci sono n chiavi che rappresentano gli ip destinazione e come valore di ques e come chiavegenerata aggregando i flussi per coppia ip sorgente-destinazione. 
+La mappa dei servizi è un file json (*services_map.json*), quindi un dizionario chiave-valore, che ha come chiavi l'ip sorgente, per ogni ip sorgente ci sono *n* chiavi che rappresentano gli ip destinazione contattati dall'host e come valore di queste chiavi è presente un array contenente il numero di byte che i due host si sono scambiati e una lista dei protocolli utilizzati.
 
-Partendo dal presupposto di sapere quali sono le attività principali svolte dai dispositivi analizzati, ad esempio nel caso di una smart tv, streaming e navigazione web, possiamo creare una mappa dei servizi, che descriva il "comportamento" dei dispositivi, esaminando il traffico di rete in entrata e in uscita.
+Partendo dal presupposto di sapere quali sono le attività principali svolte dai dispositivi analizzati, ad esempio nel caso di una smart tv, streaming e navigazione web, possiamo creare una mappa dei servizi, che descriva il "comportamento" dei dispositivi, esaminando il traffico di rete in entrata e in uscita da questi.
 
-Per questo progetto è stato analizzato un solo dispositivo dedicato ad attività di streaming online. Eseguendo la cattura del traffico di rete, generato da questo dispositivo per un certo periodo di tempo, otteniamo tramite *nfstream* dei flussi e da questi possiamo poi creare la mappa.   
+Per questo progetto ho avuto la possibilità di analizzare un solo dispositivo, destinato principalmente ad attività di streaming online (YouTube, Netflix....).
 
 ## Anomalia
-Per individuare le anomalie si confrontano le informazioni dei flussi, generati in tempo reale dai pacchetti ricevuti sull'interfaccia di rete, con le informazioni della mappa:
+Per individuare le anomalie si confrontano le informazioni dei flussi, generati in tempo reale dai pacchetti, con le informazioni della mappa:
 - se l'host sorgente non è presente all'interno della mappa, allora lo script restituirà "UNKNOWN_SOURCE_IP"
 - viceversa per l'host destinatario restituirà "UNKNOWN_DESTINATION_IP"
 - infine, se gli host sorgente e destinatario si trovano già all'interno della mappa dei servizi, ma viene utilizzato un protocollo diverso da quelli registrati per questa coppia di host, il programma restituirà "PROTOCOL_NEVER_USED"
   - se il protocollo principale è DNS o TLS allora restituisce "DNS/TLS APPLICATION"
   - se il protocollo è sconosciuto ("Unknown") allora restituisce "UNKNOWN PROTOCOL"
 
-Gli ultimi due casi sono delle anomalie di minore importanza, poiché si discostano dalla norma ma sono meno rilevanti rispetto alle altre tre.
+Gli ultimi due casi sono delle anomalie di minore importanza, poiché sì non rispettano il "comportamento tipico del dispositivo" ma nella maggior parte dei casi non rappresentano una minaccia come le altre; ad esempio, se la macchina mi inizia a generare traffico TLS di Ebay, mentre l'unico traffico TLS osservato su quel dispositivo è relativo ad Amazon, è importante notificarlo all'utente ma difficilmente rappresenterà una minaccia. 
 
-Per come è stato implementato il codice, ho deciso di non notificare moltiplici anomalie di un singolo flusso ma di fornire una priorità a ognuna di queste; ad esempio se il mio dispositivo contatta un host locale sconosciuto con un protocollo sconosciuto, l'unica anomalia che notificherà sarà quella di "UNKNOWN_DESTINATION_IP", senza aggiungere anche quella di "UNKNOWN PROTOCOL".
+Inoltre ho deciso di non notificare moltiplici anomalie relative a un singolo flusso ma di fornire una priorità a ognuna di queste; ad esempio se il mio dispositivo contatta un host locale sconosciuto con un protocollo sconosciuto, l'unica anomalia che il programma notificherà sarà quella di "UNKNOWN_DESTINATION_IP", senza aggiungere anche quella di "UNKNOWN PROTOCOL".
 
 ## Test e risultati
-Per testare il programma ho inizialmente catturato per circa 60 minuti i flussi generati dal dispositivo dedicato allo streaming, mentre veniva utilizzato in maniera "ideale". Successivamente eseguendo `detect_anomalies.py` ho generato la mappa dei servizi (dai flussi) e poi ho iniziato ad utilizzare il dispositivo, cosicché lo script potesse iniziare ad analizzare i flussi in tempo reale.
+Per testare il programma ho inizialmente catturato circa 60 minuti di flussi, generati dal dispositivo dedicato allo streaming, utilizzando tutte le funzionalità che avesse da offrire. Successivamente eseguendo `detect_anomalies.py` ho generato la mappa dei servizi (dai flussi) e poi ho iniziato ad utilizzare il dispositivo, cosicché lo script potesse iniziare ad analizzare i flussi in tempo reale.
 
 Per testare la rilevazione di anomalie, ho iniziato ad esempio a generare traffico torrent o ad aprire sessioni SSH verso host remoti. Inoltre, come previsto, facendo comunicare il dispositivo con una macchina locale mai osservata prima, lo script genera un'anomalia di tipo *ip sorgente/destinatario sconosciuto*.
 
 I risultati ottenuti vengono riassunti nel report, ottenibile eseguendo `detect_anomalies.py` con il flag `-a`, e nei test che ho eseguito sono stati piuttosto soddisfacenti, a parte rarissimi casi (con BitTorrent) in cui il protocollo non veniva riconosciuto da NFStream nei restanti casi il programma è riuscito ad identificare tutte le anomalie.
 
-Nel report vengono rappresentati insieme alla lista dei protocolli utilizzati da un certo host, anche i byte che sono stati ricevuti da questo. 
+Nel report vengono rappresentati insieme alla lista dei protocolli utilizzati da un certo host, anche i byte che sono stati ricevuti da questo, così da avere una panoramica sul volume di dati per host. 
 
 # Esecuzione
 *Nota: Il file `config.json` contiene dei parametri utilizzati dagli script come ad esempio il nome dei file di output.*
