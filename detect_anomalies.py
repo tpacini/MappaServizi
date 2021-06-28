@@ -80,7 +80,7 @@ def generate_services_map():
         df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
 
     # Filter on "Unknown" protocol name
-    df = [df['application_name'] != "Unknown"]
+    df = df[df['application_name'] != "Unknown"]
 
     # Generate the dedicated data structure
     sources = {}
