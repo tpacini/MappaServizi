@@ -7,6 +7,7 @@ import pandas as pd
 with open('config.json', 'r') as fd:
     j = json.load(fd)
     SOFT_ERR          = j["soft_error"]
+    UNK_PROTO_ERR     = j["unknown_proto_error"]
     APP_NAME_ERR      = j["app_name_error"]
     DST_IP_ERR        = j["dst_ip_error"]
     SRC_IP_ERR        = j["src_ip_error"]
@@ -17,7 +18,8 @@ with open('config.json', 'r') as fd:
     OUT_FILENAME      = j["out_file"]
 
 flows_counter = 0   # number of analyzed flows
-report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, SOFT_ERR:{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
+report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, SOFT_ERR:{}, APP_NAME_ERR:{}, 
+                    DST_IP_ERR:{}, SRC_IP_ERR:{}, UNK_PROTO_ERR:{}}  
 
 # Parse command-line arguments
 def parse_cmdline_args(argv):
@@ -76,6 +78,9 @@ def generate_services_map():
     # Filter on address of analysed device(s)
     for d_addr in DEVICE_IPS:
         df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
+
+    # Filter on "Unknown" protocol name
+    df = [df['application_name'] != "Unknown"]
 
     # Generate the dedicated data structure
     sources = {}
@@ -177,6 +182,9 @@ def check_flow(src_ip, dst_ip, app_name):
                 # DNS/TLS soft anomaly
                 if ("DNS" in app_name) or ("TLS" in app_name): 
                     return SOFT_ERR
+                # Unknown protocol
+                elif app_name == "Unknown":
+                    return UNK_PROTO_ERR
                 return APP_NAME_ERR
         else:
             return DST_IP_ERR
@@ -197,7 +205,7 @@ def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
         else:
             dst_list[dst_ip][0] += b_bytes
             # app_name never registered
-            if app_name not in dst_list[dst_ip][2:]:
+            if app_name not in dst_list[dst_ip][1:]:
                 dst_list[dst_ip].append(app_name)
         
         dst_list["tot_bytes"] += b_bytes
@@ -220,6 +228,7 @@ def bpf_string(addresses):
 
 
     return filter_str[:-4]
+
 
 if __name__ == "__main__":
     # Get capture interface name
