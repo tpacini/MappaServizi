@@ -1,5 +1,6 @@
 {
     "out_file": "./output/capture_results.csv",
+    "soft_error" : "DNS/TLS ANOMALY",
     "app_name_error" : "PROTOCOL NEVER USED",
     "dst_ip_error" : "UNKNOWN DESTINATION IP",
     "src_ip_error" : "UNKNOWN SOURCE IP",

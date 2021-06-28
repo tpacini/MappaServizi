@@ -6,6 +6,7 @@ import pandas as pd
 
 with open('config.json', 'r') as fd:
     j = json.load(fd)
+    SOFT_ERR          = j["soft_error"]
     APP_NAME_ERR      = j["app_name_error"]
     DST_IP_ERR        = j["dst_ip_error"]
     SRC_IP_ERR        = j["src_ip_error"]
@@ -16,7 +17,7 @@ with open('config.json', 'r') as fd:
     OUT_FILENAME      = j["out_file"]
 
 flows_counter = 0   # number of analyzed flows
-report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
+report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, SOFT_ERR:{}, APP_NAME_ERR:{}, DST_IP_ERR:{}, SRC_IP_ERR:{}}  
 
 # Parse command-line arguments
 def parse_cmdline_args(argv):
@@ -151,7 +152,7 @@ def print_report():
         for src_ip in flows.keys():
             dests = flows[src_ip]
             tot_bytes = dests["tot_bytes"]
-            print("+ {0:15s} exchange {1:9d} bytes with: " \
+            print("+ {0:15s} receive {1:9d} bytes from: " \
                 .format(src_ip, tot_bytes))
             
             for dst_ip in list(dests.keys())[1:]:
@@ -171,7 +172,11 @@ def check_flow(src_ip, dst_ip, app_name):
         # src_ip has alreay contacted dst_ip
         if dst_ip in services_map[src_ip].keys():
             # with a different protocol
-            if app_name not in services_map[src_ip][dst_ip][1:]:
+            known_protos = services_map[src_ip][dst_ip][1:]
+            if app_name not in known_protos:
+                # DNS/TLS soft anomaly
+                if ("DNS" in app_name) or ("TLS" in app_name): 
+                    return SOFT_ERR
                 return APP_NAME_ERR
         else:
             return DST_IP_ERR
@@ -254,7 +259,7 @@ if __name__ == "__main__":
         report["tot_flows"] += 1
 
         # Periodical persistence of report
-        if inner_counter == 5:
+        if inner_counter == 4:
             inner_counter = 0
             with open(REPORT_FILENAME, 'w') as fd:
                 json.dump(report, fd)
