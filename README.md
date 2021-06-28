@@ -28,14 +28,21 @@ Per individuare le anomalie confronto le informazioni dei flussi, generati in te
 - se l'host sorgente non è presente all'interno della mappa, allora lo script restituirà "UNKNOWN_SOURCE_IP"
 - viceversa per l'host destinatario restituirà "UNKNOWN_DESTINATION_IP"
 - infine, se gli host sorgente e destinatario si trovano già all'interno della mappa dei servizi, ma viene utilizzato un protocollo diverso da quelli registrati per questa coppia di host, il programma restituirà "PROTOCOL_NEVER_USED"
+  - se il protocollo principale è DNS o TLS allora restituisce "DNS/TLS APPLICATION"
+  - se il protocollo è sconosciuto ("Unknown") allora restituisce "UNKNOWN PROTOCOL"
+
+Gli ultimi due casi sono delle anomalie di minore importanza, poiché si discostano dalla norma ma sono meno rilevanti rispetto alle altre tre.
+
+Per come è stato implementato il codice, ho deciso di non notificare moltiplici anomalie di un singolo flusso ma di fornire una priorità a ognuna di queste; ad esempio se il mio dispositivo contatta un host locale sconosciuto con un protocollo sconosciuto, l'unica anomalia che notificherà sarà quella di "UNKNOWN_DESTINATION_IP", senza aggiungere anche quella di "UNKNOWN PROTOCOL".
 
 ## Test e risultati ottenuti
 Per testare il programma ho inizialmente catturato per circa 60 minuti i flussi generati dal dispositivo dedicato allo streaming, mentre veniva utilizzato in maniera "ideale". Successivamente eseguendo `detect_anomalies.py` ho generato la mappa dei servizi (dai flussi) e poi ho iniziato ad utilizzare il dispositivo, cosicché lo script potesse iniziare ad analizzare i flussi in tempo reale.
 
 Per testare la rilevazione di anomalie, ho iniziato ad esempio a generare traffico torrent o ad aprire sessioni SSH verso host remoti. Inoltre, come previsto, facendo comunicare il dispositivo con una macchina locale mai osservata prima, lo script genera un'anomalia di tipo *ip sorgente/destinatario sconosciuto*.
 
-[aggiungere tolleranze su ad esempio richieste inverse per DNS o TLS e per DNS e TLS su applicazioni diverse da quelle analizzate]
+I risultati ottenuti vengono riassunti nel report, ottenibile eseguendo `detect_anomalies.py` con il flag `-a`, e nei test che ho eseguito sono stati piuttosto soddisfacenti, a parte rarissimi casi (con BitTorrent) in cui il protocollo non veniva riconosciuto da NFStream nei restanti casi il programma è riuscito ad identificare tutte le anomalie.
 
+Nel report vengono rappresentati insieme alla lista dei protocolli utilizzati da un certo host, anche i byte che sono stati ricevuti da questo. 
 
 # Esecuzione
 *Nota: Il file `config.json` contiene dei parametri utilizzati dagli script come ad esempio il nome dei file di output.*
