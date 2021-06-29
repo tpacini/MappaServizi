@@ -167,7 +167,7 @@ def print_report():
         for src_ip in flows.keys():
             dests = flows[src_ip]
             tot_bytes = dests["tot_bytes"]
-            print("+ {0:15s} receive {1:9d} bytes from: " \
+            print("+ {0:15s} exchange {1:9d} bytes with: " \
                 .format(src_ip, tot_bytes))
             
             for dst_ip in list(dests.keys())[1:]:
