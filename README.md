@@ -29,7 +29,7 @@ Per questo progetto ho avuto la possibilità di analizzare un solo dispositivo, 
 Innanzitutto, per anomalia intendo un traffico di rete che si discosta da quello descritto nella mappa dei servizi, ad esempio può venir generato del traffico con un protocollo mai utilizzato da quel dispositivo (verso quel determinato host) o possono venir inviati/ricevuti dati a/da un host sconosciuto.
 
 Per individuare le anomalie si confrontano le informazioni dei flussi, generati in tempo reale dai pacchetti, con le informazioni della mappa:
-- se l'host sorgente del flusso non è presente all'interno della mappa, allora lo script restituirà "UNKNOWN_SOURCE_IP"
+- se l'host sorgente del flusso non è presente all'interno della mappa (come ip sorgente), allora lo script restituirà "UNKNOWN_SOURCE_IP"
 - viceversa per l'host destinatario restituirà "UNKNOWN_DESTINATION_IP"
 - infine, se gli host sorgente e destinatario si trovano già all'interno della mappa dei servizi, ma viene utilizzato un protocollo diverso da quelli registrati per questa coppia di host, il programma restituirà "PROTOCOL_NEVER_USED"
   - se il protocollo principale è DNS o TLS allora restituisce "DNS/TLS APPLICATION"
