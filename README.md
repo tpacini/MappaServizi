@@ -26,7 +26,7 @@ Per questo progetto ho avuto la possibilità di analizzare un solo dispositivo, 
 ![](./output/servmap_graph.png)
 
 ## Anomalia
-Innanzitutto, per anomalia intendo un traffico di rete che si discosta da quello contenuto nella mappa dei servizi, cioè una comunicazione che avviene con dispositivi sconosciuti o con protocolli sconosciuti o non comuni per quel determinato dispositivo (coppia di dispositivi, sorgente e destinatario).
+Innanzitutto, per anomalia intendo un traffico di rete che si discosta da quello descritto nella mappa dei servizi, ad esempio può venir generato del traffico con un protocollo mai utilizzato da quel dispositivo (verso quel determinato host) o possono venir inviati/ricevuti dati a/da un host sconosciuto.
 
 Per individuare le anomalie si confrontano le informazioni dei flussi, generati in tempo reale dai pacchetti, con le informazioni della mappa:
 - se l'host sorgente del flusso non è presente all'interno della mappa, allora lo script restituirà "UNKNOWN_SOURCE_IP"
@@ -35,7 +35,7 @@ Per individuare le anomalie si confrontano le informazioni dei flussi, generati 
   - se il protocollo principale è DNS o TLS allora restituisce "DNS/TLS APPLICATION"
   - se il protocollo è sconosciuto ("Unknown") allora restituisce "UNKNOWN PROTOCOL"
 
-Gli ultimi due casi sono delle anomalie di minore importanza, poiché sì non rispettano il "comportamento tipico del dispositivo" ma nella maggior parte dei casi non rappresentano una minaccia come le altre; ad esempio, se la macchina mi inizia a generare traffico TLS di Ebay, mentre l'unico traffico TLS osservato su quel dispositivo è relativo ad Amazon, è importante notificarlo all'utente ma difficilmente rappresenterà una minaccia.
+Gli ultimi due casi sono delle anomalie di minore importanza, poiché sì, individuano un comportamento atipico della rete ma nella maggior parte dei casi non rappresentano un pericolo come le altre anomalie; ad esempio, se la macchina mi inizia a generare traffico TLS di Ebay, mentre l'unico traffico TLS osservato su quel dispositivo è relativo ad Amazon, è importante notificarlo all'utente ma difficilmente rappresenterà una minaccia.
 
 Per come è stato implementato il codice, ho deciso di non notificare moltiplici anomalie relative a un singolo flusso ma di fornire una priorità a ognuna di queste; ad esempio se il mio dispositivo contatta un host locale sconosciuto con un protocollo sconosciuto, l'unica anomalia che notificherà sarà quella di "UNKNOWN_DESTINATION_IP", senza aggiungere anche quella di "UNKNOWN PROTOCOL".
 
@@ -51,11 +51,11 @@ Questa impostazione è solo una delle tante; invece che eseguire gli script sul 
 Infine, anche se non è mai stato testato, è possibile, dopo aver generato la mappa dei servizi, individuare le anomalie di un file .pcap, passando come argomento al flag `-i` il percorso assoluto o relativo del file.
 
 ### Test eseguiti
-Per testare il programma ho inizialmente catturato per circa 60 minuti i flussi generati dal dispositivo dedicato allo streaming, utilizzando tutte le funzionalità disponibili. Successivamente eseguendo `detect_anomalies.py` ho generato la mappa dei servizi (dai flussi) e poi ho iniziato ad utilizzare il dispositivo, cosicché lo script potesse iniziare ad analizzare i flussi in tempo reale.
+Per testare il programma ho inizialmente catturato per circa 60 minuti i flussi generati dal dispositivo dedicato allo streaming, utilizzando tutte le funzionalità disponibili. Successivamente eseguendo `detect_anomalies.py` è stata generata la mappa dei servizi (dai flussi) e poi ho iniziato ad utilizzare il dispositivo, cosicché lo script potesse iniziare ad analizzare i flussi in tempo reale.
 
-Per testare la rilevazione di anomalie, ho generato traffico torrent e ho aperto varie sessioni SSH verso host remoti. Inoltre, come previsto, facendo comunicare il dispositivo con una macchina locale mai osservata prima, lo script ha generato un'anomalia di tipo *ip sorgente/destinatario sconosciuto*.
+Per testare la rilevazione di anomalie, ho generato traffico torrent e ho aperto varie sessioni SSH verso host remoti (PROTOCOL_NEVER_USED). Inoltre, come previsto, facendo comunicare il dispositivo con una macchina locale mai osservata prima, lo script ha generato un'anomalia di tipo *ip sorgente/destinatario sconosciuto*.
 
-I risultati ottenuti vengono riassunti nel report, ottenibile eseguendo `detect_anomalies.py` con il flag `-a`, e nei test che ho eseguito essi sono stati piuttosto soddisfacenti.
+I risultati ottenuti vengono riassunti nel report ottenibile eseguendo `detect_anomalies.py` con il flag `-a`.
 
 *Nota:* nel report vengono rappresentati insieme alla lista dei protocolli utilizzati da un certo host, anche i byte del flusso bidirezionale. 
 
