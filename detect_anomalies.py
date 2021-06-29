@@ -76,11 +76,22 @@ def generate_services_map():
     df.reset_index(drop=True, inplace=True)
 
     # Filter on address of analysed device(s)
-    for d_addr in DEVICE_IPS:
-        df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
+    df1 = df[(df['src_ip'] == DEVICE_IPS[0]) | (df['dst_ip'] == DEVICE_IPS[0])]
+
+    if len(DEVICE_IPS) > 1:
+        for d_addr in DEVICE_IPS[1:]:
+            temp_df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
+            df1 = pd.concat([df1, temp_df])
+            
+    df = df1[~df1.index.duplicated(keep='first')]
+    df.reset_index(drop=True, inplace=True)
 
     # Filter on "Unknown" protocol name
     df = df[df['application_name'] != "Unknown"]
+
+    # Convert remote addresses in "remote"
+    df['src_ip'] = df['src_ip'].apply(check_address)
+    df['dst_ip'] = df['dst_ip'].apply(check_address)
 
     # Generate the dedicated data structure
     sources = {}
@@ -88,14 +99,13 @@ def generate_services_map():
 
     for i in src_ips:
         temp = df[df['src_ip'] == i]
-        i = check_address(i)
         aux_dict = {}
 
         for index, row in temp.iterrows():
-            dst_ip = check_address(row['dst_ip'])
+            dst_ip = row['dst_ip']
             b_bytes = row['bidirectional_bytes']
             app_name = row['application_name']
-            
+                
             try:
                 pres = aux_dict[dst_ip]
                 pres[0] += int(b_bytes)
@@ -103,7 +113,7 @@ def generate_services_map():
                     pres.append(app_name) 
             except KeyError:
                 aux_dict[dst_ip] = [int(b_bytes), app_name]
-                
+                    
         sources[i] = aux_dict
 
     # Save the services map in a json file
@@ -124,13 +134,13 @@ def check_address(addr):
     for i in range(0, len(parts)):
         parts[i] = int(parts[i])
     
-    # local address 10.0.0.0 - 10.255.255.255
+    # local address 10.0.0.0/8
     if parts[0] == 10:
         return addr
-    # local address 172.16.0.0 - 172.31.255.255
+    # local address 172.16.0.0/12
     elif (parts[0] == 172) and (parts[1] >= 16) and (parts[1] <= 31):
         return addr
-    # local address 192.168.0.0 - 192.168.255.55
+    # local address 192.168.0.0/16
     elif (parts[0] == 192) and (parts[1] == 168):
         return addr
     else:
@@ -237,7 +247,7 @@ if __name__ == "__main__":
 
     # Generate the services map and load it, used as a reference to detect anomalies
     generate_services_map()
-    
+
     try:
         with open(SERV_MAP_FILENAME, 'r') as fd:
             services_map = json.load(fd)
