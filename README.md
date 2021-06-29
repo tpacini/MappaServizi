@@ -40,22 +40,22 @@ Per come è stato implementato il codice, ho deciso di non notificare moltiplici
 ## Test e risultati
 
 ### Setup della rete
-*Nota:* Durante i test, gli script sono stati eseguiti su una macchina differente dal dispositivo da analizzare. Grazie alla possibilità di trasformare l'interfaccia wifi in un hotspot, è stato inoltre possibile eseguire i test su una sottorete locale (10.0.0.0/8) in cui questo dispositivo aveva il ruolo di router:
+*Nota:* Durante i test, gli script sono stati eseguiti su una macchina differente dal dispositivo da analizzare. Grazie alla possibilità di trasformare l'interfaccia wifi in un hotspot, è stato inoltre possibile eseguire i test su una sottorete locale (10.0.0.0/8) in cui la macchina aveva il ruolo di router:
 
 ![](./output/network_graph.png)
 
 Questa impostazione è solo una delle tante; invece che eseguire gli script sul "router" è anche possibile analizzare i pacchetti della rete inoltrando il traffico su una certa porta del router su cui sarà connesso il dispositivo che eseguirà gli script (molto più vicino ad uno scenario reale in cui difficilmente un router esegue numerose operazioni vista la scarsa capacità computazionale).
 
-Infine, anche se non è mai stato testato, è possibile, dopo aver generato la mappa dei servizi, individuare le anomalie di un file .pcap, passando come argomento al flag -i il percorso assoluto o relativo del file.
+Infine, anche se non è mai stato testato, è possibile, dopo aver generato la mappa dei servizi, individuare le anomalie di un file .pcap, passando come argomento al flag `-i` il percorso assoluto o relativo del file.
 
 ### Test eseguiti
 Per testare il programma ho inizialmente catturato per circa 60 minuti i flussi generati dal dispositivo dedicato allo streaming, utilizzando tutte le funzionalità disponibili. Successivamente eseguendo `detect_anomalies.py` ho generato la mappa dei servizi (dai flussi) e poi ho iniziato ad utilizzare il dispositivo, cosicché lo script potesse iniziare ad analizzare i flussi in tempo reale.
 
 Per testare la rilevazione di anomalie, ho generato traffico torrent e ho aperto varie sessioni SSH verso host remoti. Inoltre, come previsto, facendo comunicare il dispositivo con una macchina locale mai osservata prima, lo script ha generato un'anomalia di tipo *ip sorgente/destinatario sconosciuto*.
 
-I risultati ottenuti vengono riassunti nel report, ottenibile eseguendo `detect_anomalies.py` con il flag `-a`, e nei test che ho eseguito sono stati piuttosto soddisfacenti.
+I risultati ottenuti vengono riassunti nel report, ottenibile eseguendo `detect_anomalies.py` con il flag `-a`, e nei test che ho eseguito essi sono stati piuttosto soddisfacenti.
 
-Nota: nel report vengono rappresentati insieme alla lista dei protocolli utilizzati da un certo host, anche i byte che sono stati ricevuti da questo. 
+*Nota:* nel report vengono rappresentati insieme alla lista dei protocolli utilizzati da un certo host, anche i byte del flusso bidirezionale. 
 
 # Esecuzione
 *Nota: Il file `config.json` contiene dei parametri utilizzati dagli script come ad esempio il nome dei file di output.*
