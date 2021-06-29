@@ -19,14 +19,14 @@ Lo scopo del programma è individuare delle anomalie sulla rete, relative a uno 
 ## Mappa dei servizi 
 La mappa dei servizi è un file json (services_map.json), quindi un dizionario chiave-valore, che ha come chiavi l'ip sorgente, per ogni ip sorgente ci sono n chiavi che rappresentano gli ip destinazione contattati dall'host e come valore di queste chiavi è presente un array contenente il numero di byte che i due host si sono scambiati e una lista dei protocolli utilizzati.
 
-Partendo dal presupposto di sapere quali sono le attività principali svolte dai dispositivi analizzati, ad esempio nel caso di una smart tv, streaming e navigazione web, possiamo creare una mappa dei servizi, che descriva il "comportamento" dei dispositivi, esaminando il traffico di rete in entrata e in uscita.
+Partendo dal presupposto di sapere quali sono le attività principali svolte dai dispositivi analizzati, ad esempio nel caso di una smart tv, streaming e navigazione web, possiamo creare una mappa dei servizi, che descriva il "comportamento" dei dispositivi, esaminando il traffico di rete in entrata e in uscita da questi.
 
 Per questo progetto ho avuto la possibilità di analizzare un solo dispositivo, destinato principalmente ad attività di streaming online (YouTube, Netflix....). Questa è una possibile rappresentazione della mappa dei servizi (gli archi sono contrassegnati da una lista di protocolli):
 
 ![](./output/servmap_graph.png)
 
 ## Anomalia
-Per individuare le anomalie si confrontano le informazioni dei flussi, generati in tempo reale dai pacchetti ricevuti sull'interfaccia di rete, con le informazioni della mappa:
+Per individuare le anomalie si confrontano le informazioni dei flussi, generati in tempo reale dai pacchetti, con le informazioni della mappa:
 - se l'host sorgente non è presente all'interno della mappa, allora lo script restituirà "UNKNOWN_SOURCE_IP"
 - viceversa per l'host destinatario restituirà "UNKNOWN_DESTINATION_IP"
 - infine, se gli host sorgente e destinatario si trovano già all'interno della mappa dei servizi, ma viene utilizzato un protocollo diverso da quelli registrati per questa coppia di host, il programma restituirà "PROTOCOL_NEVER_USED"
