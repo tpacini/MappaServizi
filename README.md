@@ -26,8 +26,10 @@ Per questo progetto ho avuto la possibilità di analizzare un solo dispositivo, 
 ![](./output/servmap_graph.png)
 
 ## Anomalia
+Innanzitutto, per anomalia intendo un traffico di rete che si discosta da quello contenuto nella mappa dei servizi, cioè una comunicazione che avviene con dispositivi sconosciuti o con protocolli sconosciuti o non comuni per quel determinato dispositivo (coppia di dispositivi, sorgente e destinatario).
+
 Per individuare le anomalie si confrontano le informazioni dei flussi, generati in tempo reale dai pacchetti, con le informazioni della mappa:
-- se l'host sorgente non è presente all'interno della mappa, allora lo script restituirà "UNKNOWN_SOURCE_IP"
+- se l'host sorgente del flusso non è presente all'interno della mappa, allora lo script restituirà "UNKNOWN_SOURCE_IP"
 - viceversa per l'host destinatario restituirà "UNKNOWN_DESTINATION_IP"
 - infine, se gli host sorgente e destinatario si trovano già all'interno della mappa dei servizi, ma viene utilizzato un protocollo diverso da quelli registrati per questa coppia di host, il programma restituirà "PROTOCOL_NEVER_USED"
   - se il protocollo principale è DNS o TLS allora restituisce "DNS/TLS APPLICATION"
