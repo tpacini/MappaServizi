@@ -1,12 +1,12 @@
 # Introduction
-The aim of this project is building a script albe to identify anomalies looking at a *map of the services.*
+The aim of this project is building a script able to identify anomalies looking at a *map of the services.*
 
 The idea is to:
 1. examine the behaviour of the network, capturing the traffic and generating, through the *nfstream* library, the  packet-related flows.
 
 2. create a map of the services based upon the flows and use it like a filter to locate potential anomalies (unknown protocol, unknown source ip, ...)
 
-## Requirements
+### Requirements
 To correctly execute the script, the installation of *nfstream* is requested:
 
 `sudo pip3 install nfstream`
@@ -47,9 +47,9 @@ The services map is a **json file** (`services_map.json`), a key-value dictionar
     },
 ```
 
-Based on our knowledge of the analyzed devices, for instance a smart TV will probably do streaming and web browsing, we can create a services' map representing the "behaviour" of the devices, monitoring the network traffic in and out from them.
+Based on our knowledge of the analyzed devices (e.g. a smart TV will mostly do streaming and web browsing) we can create a services' map representing the "behaviour" of the devices, monitoring the network traffic in and out from them.
 
-For this project I had the opportunity to analyze only one device, primarily intended for online streaming activities (YouTube, Netflix....). This is a possible representation of the services map (arcs are marked by a list of protocols):
+For this project I had the opportunity to analyze only one device, primarily intended for online streaming activities (YouTube, Netflix....). This is a possible representation of the services' map (arcs are marked by a list of protocols):
 
 ![](./output/servmap_graph.png)
 
@@ -58,16 +58,16 @@ For this project I had the opportunity to analyze only one device, primarily int
 First of all, an **anomaly** is defined as a *network traffic that deviates from the one described in the services' map,* for example, traffic may be generated with a protocol never used by that device (to that particular host) or data may be sent/received to/from an unknown host.
 
 
-In order to detect anomalies, flow information, generated in real time by packets, is compared with map's informations:
+In order to detect anomalies, flow informations, generated in real time by packets, are compared with map's informations:
 | Condition | Value returned |
 | --------- | -------------- |
 | **src_host** is not present within the map (as source ip) | "UNKNOWN_SOURCE_IP" |
 | **dst_host** is not present within the map (as dst. ip)   | "UNKNOWN_DESTINATION_IP" |
-| **protocol** other than those captured for the (src, dst) host pair is used | "PROTOCOL_NEVER_USED" | 
+| **protocol** other than those used by the (src, dst) pair is detected | "PROTOCOL_NEVER_USED" | 
 | main **protocol** is DNS or TLS | "DNS/TLS APPLICATION" |
 | **protocol** is unknown ("Unknown") |  "UNKNOWN PROTOCOL" |
 
-The last two cases are minor anomalies because they identify atypical network behaviour but in most cases they do not pose a threat like the other anomalies; for instance, if my machine starts generating TLS traffic from Ebay, while the only TLS traffic observed on that device is related to Amazon, it is important to notify the user but it's very unlikely that it will pose a threat.
+The last two cases are minor anomalies because they identify atypical network behaviour but in most cases they do not pose a threat like the other anomalies; for instance, if my machine starts generating TLS traffic from Ebay, while the only TLS traffic observed on that device is related to Amazon, it is important to notify the user but it's very unlikely that it will generate a threat.
 
 Because of the way the code was implemented, I decided to not notify multiple anomalies related to a single flow but to provide a priority to each one of them; for instance, if my device contacts an unknown local host with an unknown protocol, the only anomaly notified will be "UNKNOWN_DESTINATION_IP", skipping the "UNKNOWN PROTOCOL" one.
 
@@ -75,17 +75,17 @@ Because of the way the code was implemented, I decided to not notify multiple an
 ## Tests and results
 
 ### Network setup
-*Note:* During the tests, the scripts have been executed on a machine which is not the one analyzed. Moreover, the tests have been carried out on a local subnet (10.0.0.0/8) where the main machine has the role of router:
+*Note:* During the tests, the scripts have been executed on a machine which is not the one analyzed. Moreover, the tests have been carried out on a local subnet (10.0.0.0/8) where the machine has the role of router:
 
 ![](./output/network_graph.png)
 
-Other configurations are possible, for instance, there is the possibility of monitoring the packets forwarding the traffic on a specific port of the router, on which a device designated to execute the scripts will be connected (closer to a real scenario where a router is not able to do a lot of operations due to its computational limits). 
+Other configurations are possible, for instance, there is the possibility of monitoring the packets, forwarding the traffic on a specific port of the router on which a device designated to execute the scripts will be connected (closer to a real scenario where a router is not able to do a lot of operations due to its computational limits). 
 
 At the end, even if not tested on this scenario, it is possible to discover the anomalies of a *.pcap file* using the flag `-i` with the absolute or relative path of the file.
 
 
 ### Tests
-I tested the scripts for 60 minutes of use of the streaming device, trying to use one by one all the available functionalities of the device. Then, I created the services' map using `detect_anamolies.py` and start using the device, therefore the program could analyze all the flows in real time.
+I tested the scripts for 60 minutes of use of the device, trying to employ one by one all the available functionalities of the device. Then, I created the services' map using `detect_anamolies.py` and start using the device (for the second time), simultaneosly the program starts analyzing all the flows in real time.
 
 To test the anomalies detection, I have generated torrent traffic and open few SSH sessions to remote hosts (PROTOCOL_NEVER_USED). Furthermore, as expected, the communication, between the device and an unknown local machine, has been detected as an anomaly of type *source/destination ip unknown.*
 
@@ -101,7 +101,7 @@ The final results have been stored inside the report.
 
 Execute `sudo flows_capture.py -i eth0` to capture the traffic from the `eth0` interface and to obtain in output a file containing the flows. The superuser's permissions are needed to activate the capture from the network interface.
 
-Now, execute `sudo detect_anomalies.py -i eth0` to generate the services' map and to start capturing the packets through the `eth0` network interface; the script in real time analyses the flows' infroamtions and checks for anomalies. For every flow examined, a result will be displayed:
+Now, execute `sudo detect_anomalies.py -i eth0` to generate the services' map and to start capturing the packets through the `eth0` network interface; the script in real time analyses the flows' informations checking for anomalies. For every flow examined, a result will be displayed:
 
 ```
  1.  10.42.0.130     --> 10.42.0.1       , DNS                  | NONE
