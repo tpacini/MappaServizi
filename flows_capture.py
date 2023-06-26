@@ -8,8 +8,11 @@ with open('config.json', 'r') as fd:
 
 # Export the received flows in the ".csv" format
 def print_pandas_flows(my_streamer):
-    df = my_streamer.to_pandas()
-    df.to_csv(OUT_FILENAME)
+    try:
+        df = my_streamer.to_pandas()
+        df.to_csv(OUT_FILENAME)
+    except AttributeError:
+        print("No captured data. File empty.")
 
 # Parse command-line arguments
 def parse_cmdline_args(argv):
