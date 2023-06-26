@@ -75,7 +75,7 @@ I choose to avoid notifying multiple anomalies related to a single flow but to p
 Other configurations are possible, for instance, monitoring the packets and forwarding the traffic on a specific port of the router, on which a device will be connected. The remote device will run the script. This scenario is more realistic due to the fact that a router is not able to do a lot of operations due to its computational limits, so an external computational unit is mandatory.
 
 ### Tests
-I run the scripts for sixty minutes, trying to perform one by one all the available functionalities of the device. Then, I created the services' map using `detect_anamolies.py` and I used the device for a few minutes, while the program was analyzing all the flows in real time.
+I run the scripts for sixty minutes, trying to perform one by one all the available functionalities of the device. Then, I created the services' map using `detect_anamolies.py` and I used the device for other few minutes, while the program was analyzing all the flows in real time.
 
 To test the anomalies detection, I have generated torrent traffic and open few SSH sessions to remote hosts (PROTOCOL_NEVER_USED). Furthermore, as expected, the communication, between the device and an unknown local machine, has been detected as an anomaly of type *source/destination ip unknown.* The final results have been stored inside the report.
 
