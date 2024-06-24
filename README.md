@@ -14,6 +14,8 @@ To run the script, the `nfstream` library have to be installed:
 
 **IMPORTANT:** execute the command with superuser permissions
 
+`nfstream` is a Python framework that has been used to aggregate network flows, but it also provides several additional tools for network analysis. Additional information can be found [here](https://www.nfstream.org/) 
+
 ## Map of the services 
 The purpose of the program is to detect anomalies on the network, related to one or more devices. To do so, a **services' map** is used, namely a data structure that describes *which hosts communicated with other hosts and which protocols were used*, for example looking at `services_map.json`:
 - *10.42.0.130* sent only DNS requests to *10.42.0.1*,
@@ -65,6 +67,7 @@ The last two cases are minor anomalies because they identify atypical network be
 
 I choose to avoid notifying multiple anomalies related to a single flow but to prioritize one of them; for instance, if my device contacts an unknown local host with an unknown protocol, the only anomaly notified will be "UNKNOWN_DESTINATION_IP", skipping the "UNKNOWN PROTOCOL" one.
 
+<!--
 ## Tests and results
 
 ### Network setup
@@ -81,7 +84,7 @@ To test the anomalies detection, I have generated torrent traffic and open few S
 
 *Note:* inside the report you can find the list of the used protocols and the bidirectional bytes of the flows.
 
-*Note:* anomalies detection can be performed on a *.pcap file*, using the flag `-i` with argument the absolute or relative path of the *.pcap* file.
+*Note:* anomalies detection can be performed on a *.pcap file*, using the flag `-i` with argument the absolute or relative path of the *.pcap* file. -->
 
 ## Usage and behavior
 *Note: The file `config.json` contains the parameters used by the script, like the name of the output file.*
@@ -171,3 +174,9 @@ Periodically, an anomalies' report is saved in the local machine. After the capt
 
 +++++++ On 561 flows, 159 anomalies +++++++
 ```
+
+---
+
+:warning: 
+This project is a PoC tested on a single device. The anomaly detector is very simple and in a real scenario a more complex system should be used. Machine learning or more sophisticated algorithms are typically used for such a task. 
+:warning:
