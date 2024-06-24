@@ -80,6 +80,7 @@ I run the scripts for sixty minutes, trying to perform one by one all the availa
 To test the anomalies detection, I have generated torrent traffic and open few SSH sessions to remote hosts (PROTOCOL_NEVER_USED). Furthermore, as expected, the communication, between the device and an unknown local machine, has been detected as an anomaly of type *source/destination ip unknown.* The final results have been stored inside the report.
 
 *Note:* inside the report you can find the list of the used protocols and the bidirectional bytes of the flows.
+
 *Note:* anomalies detection can be performed on a *.pcap file*, using the flag `-i` with argument the absolute or relative path of the *.pcap* file.
 
 ## Usage and behavior
