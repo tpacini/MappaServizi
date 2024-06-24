@@ -12,20 +12,93 @@ with open('config.json', 'r') as fd:
     DST_IP_ERR        = j["dst_ip_error"]
     SRC_IP_ERR        = j["src_ip_error"]
     NO_ERR            = j["no_error"]
+
     REPORT_FILENAME   = j["report_file"]
     SERV_MAP_FILENAME = j["servmap_file"]
-    DEVICE_IPS        = j["device_ips"]
     OUT_FILENAME      = j["out_file"]
+
+    DEVICE_IPS        = j["device_ips"]
 
 flows_counter = 0   # number of analyzed flows
 report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, SOFT_ERR:{}, APP_NAME_ERR:{}, 
                     DST_IP_ERR:{}, SRC_IP_ERR:{}, UNK_PROTO_ERR:{}}  
 
+class ServiceMap:
+    self.dataset = None
+    self.sources = None
+
+    def __init__(self):
+        pass
+
+    # Generate the data structure describing the services map
+    def generate_services_map(self):
+        # Load the dataset 
+        try:
+            df = pd.read_csv(OUT_FILENAME)
+        except FileNotFoundError:
+            print("File not found.")
+            exit(0)
+
+        # Drop the useless columns
+        df.drop(["Unnamed: 0", "src_oui", "dst_oui", "id", "expiration_id","client_fingerprint", 
+        "server_fingerprint", "src_mac", "dst_mac", "vlan_id", "tunnel_id", "expiration_id","client_fingerprint", 
+        "server_fingerprint", "user_agent", "bidirectional_first_seen_ms", "bidirectional_last_seen_ms", 
+        "bidirectional_duration_ms", "dst2src_packets", "dst2src_packets", "dst2src_first_seen_ms", "dst2src_last_seen_ms", 
+        "dst2src_duration_ms", "src2dst_first_seen_ms", "src2dst_last_seen_ms", "src2dst_duration_ms", "src2dst_packets", 
+        "src2dst_bytes", "dst2src_bytes", "bidirectional_packets"], axis=1, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+
+        # Filter on address of analysed device(s)
+        df1 = df[(df['src_ip'] == DEVICE_IPS[0]) | (df['dst_ip'] == DEVICE_IPS[0])]
+
+        if len(DEVICE_IPS) > 1:
+            for d_addr in DEVICE_IPS[1:]:
+                temp_df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
+                df1 = pd.concat([df1, temp_df])
+            
+        df = df1[~df1.index.duplicated(keep='first')]
+        df.reset_index(drop=True, inplace=True)
+
+        # Filter on "Unknown" protocol name
+        df = df[df['application_name'] != "Unknown"]
+
+        # Convert remote addresses in "remote"
+        # All the remote addresses end up in "remote" address (source and destination)
+        df['src_ip'] = df['src_ip'].apply(check_address)
+        df['dst_ip'] = df['dst_ip'].apply(check_address)
+
+        # Generate the dedicated data structure
+        self.dataset = df
+        sources = {}
+        src_ips = df.src_ip.unique()
+
+        for i in src_ips:
+            temp = df[df['src_ip'] == i]
+            aux_dict = {}
+
+            for index, row in temp.iterrows():
+                dst_ip = row['dst_ip']
+                b_bytes = row['bidirectional_bytes']
+                app_name = row['application_name']
+                
+                try:
+                    pres = aux_dict[dst_ip]
+                    pres[0] += int(b_bytes)
+                    if not app_name in pres:
+                        pres.append(app_name) 
+                except KeyError:
+                    aux_dict[dst_ip] = [int(b_bytes), app_name]
+                    
+            sources[i] = aux_dict
+
+        # Save the services map in a json file
+        self.sources = sources
+        with open(SERV_MAP_FILENAME, 'w') as fd:
+            json.dump(sources, fd)
+
 # Parse command-line arguments
 def parse_cmdline_args(argv):
-    interface = "null"
-    usage_str = "Usage: detect_anomalies.py -i <interface>\n" + \
-                " "*7 + "detect_anomalies.py -a"
+    usage_str = "Usage: detect_anomalies.py -i <interface>\n\tdetect_anomalies.py -a"
 
     # No arguments/flag in input
     if len(argv) == 0:
@@ -49,103 +122,7 @@ def parse_cmdline_args(argv):
             print_report()
             exit(0)
 
-    if interface == "null":
-        print(usage_str)
-        sys.exit()
-
     return interface
-
-
-# Generate the data structure describing the services map
-# All the remote addresses end up in "remote" address (source and destination)
-def generate_services_map():
-    # Load the dataset 
-    try:
-        df = pd.read_csv(OUT_FILENAME)
-    except FileNotFoundError:
-        print("File not found.")
-        exit(0)
-
-    # Drop the useless columns
-    df.drop(["Unnamed: 0", "src_oui", "dst_oui", "id", "expiration_id","client_fingerprint", 
-    "server_fingerprint", "src_mac", "dst_mac", "vlan_id", "tunnel_id", "expiration_id","client_fingerprint", 
-    "server_fingerprint", "user_agent", "bidirectional_first_seen_ms", "bidirectional_last_seen_ms", 
-    "bidirectional_duration_ms", "dst2src_packets", "dst2src_packets", "dst2src_first_seen_ms", "dst2src_last_seen_ms", 
-    "dst2src_duration_ms", "src2dst_first_seen_ms", "src2dst_last_seen_ms", "src2dst_duration_ms", "src2dst_packets", 
-    "src2dst_bytes", "dst2src_bytes", "bidirectional_packets"], axis=1, inplace=True)
-    df.reset_index(drop=True, inplace=True)
-
-    # Filter on address of analysed device(s)
-    df1 = df[(df['src_ip'] == DEVICE_IPS[0]) | (df['dst_ip'] == DEVICE_IPS[0])]
-
-    if len(DEVICE_IPS) > 1:
-        for d_addr in DEVICE_IPS[1:]:
-            temp_df = df[(df['src_ip'] == d_addr) | (df['dst_ip'] == d_addr)]
-            df1 = pd.concat([df1, temp_df])
-            
-    df = df1[~df1.index.duplicated(keep='first')]
-    df.reset_index(drop=True, inplace=True)
-
-    # Filter on "Unknown" protocol name
-    df = df[df['application_name'] != "Unknown"]
-
-    # Convert remote addresses in "remote"
-    df['src_ip'] = df['src_ip'].apply(check_address)
-    df['dst_ip'] = df['dst_ip'].apply(check_address)
-
-    # Generate the dedicated data structure
-    sources = {}
-    src_ips = df.src_ip.unique()
-
-    for i in src_ips:
-        temp = df[df['src_ip'] == i]
-        aux_dict = {}
-
-        for index, row in temp.iterrows():
-            dst_ip = row['dst_ip']
-            b_bytes = row['bidirectional_bytes']
-            app_name = row['application_name']
-                
-            try:
-                pres = aux_dict[dst_ip]
-                pres[0] += int(b_bytes)
-                if not app_name in pres:
-                    pres.append(app_name) 
-            except KeyError:
-                aux_dict[dst_ip] = [int(b_bytes), app_name]
-                    
-        sources[i] = aux_dict
-
-    # Save the services map in a json file
-    with open(SERV_MAP_FILENAME, 'w') as fd:
-        json.dump(sources, fd)
-
-
-# Check if addr is a local or remote address. Remote address ends up
-# under "remote" address while the local and IPv6 addresses remain 
-# unchanged.
-def check_address(addr):
-    # IPv6 address
-    if ":" in addr:
-        return addr
-
-    parts = addr.split(".")
-    # Convert string to int
-    for i in range(0, len(parts)):
-        parts[i] = int(parts[i])
-    
-    # local address 10.0.0.0/8
-    if parts[0] == 10:
-        return addr
-    # local address 172.16.0.0/12
-    elif (parts[0] == 172) and (parts[1] >= 16) and (parts[1] <= 31):
-        return addr
-    # local address 192.168.0.0/16
-    elif (parts[0] == 192) and (parts[1] == 168):
-        return addr
-    else:
-        return "remote"
-
 
 # Print the report of flows seen
 def print_report():
@@ -178,10 +155,31 @@ def print_report():
 
     print("\n+++++++ On {} flows, {} anomalies +++++++".format(tot_flows, tot_anom))
 
+# Check if addr is a local or remote address.
+def check_address(addr):
+    # IPv6 address
+    if ":" in addr:
+        return 
+    parts = addr.split(".")
+    # Convert string to int
+    for i in range(0, len(parts)):
+        parts[i] = int(parts[i])
+
+    # local address 10.0.0.0/8
+    if parts[0] == 10:
+        return addr
+    # local address 172.16.0.0/12
+    elif (parts[0] == 172) and ((parts[1] >= 16) and (parts[1] <= 31)):
+        return addr
+    # local address 192.168.0.0/16
+    elif (parts[0] == 192) and (parts[1] == 168):
+        return addr
+    else:
+        return "remote"
 
 # Based on source ip, destination ip and application name of the flow, check if 
 # the flow is an anomaly on the network
-def check_flow(src_ip, dst_ip, app_name):
+def check_flow_anomaly(src_ip, dst_ip, app_name):
     # src_ip already seen in the network
     if src_ip in services_map.keys():
         # src_ip has alreay contacted dst_ip
@@ -202,7 +200,6 @@ def check_flow(src_ip, dst_ip, app_name):
         return SRC_IP_ERR
 
     return NO_ERR
-
 
 # Update a data structure dedicated to the final report
 def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
@@ -228,7 +225,6 @@ def update_report(src_ip, dst_ip, app_name, b_bytes, report_dict):
     
     return report_dict
 
-
 # Generate the string for bpf filter
 def bpf_string(addresses):
     filter_str = ""
@@ -243,10 +239,10 @@ def bpf_string(addresses):
 if __name__ == "__main__":
     # Get capture interface name
     interface = parse_cmdline_args(sys.argv[1:])
-    inner_counter = 0
-
+    
     # Generate the services map and load it, used as a reference to detect anomalies
-    generate_services_map()
+    sm = ServiceMap()
+    sm.generate_services_map()
 
     try:
         with open(SERV_MAP_FILENAME, 'r') as fd:
@@ -263,7 +259,8 @@ if __name__ == "__main__":
         active_timeout=1800,
         udps=None)
 
-    # Start analyzing incoming flows
+    # Display incoming flows and guarantee persistence
+    inner_counter = 0
     for flow in my_streamer:
         src_ip   = check_address(flow.src_ip) 
         dst_ip   = check_address(flow.dst_ip)
@@ -271,7 +268,7 @@ if __name__ == "__main__":
         b_bytes  = int(flow.bidirectional_bytes)
         resp     = "{0:15s} --> {1:15s} , {2:20s} | ".format(src_ip, dst_ip, app_name)
         
-        err = check_flow(src_ip, dst_ip, app_name)
+        err = check_flow_anomaly(src_ip, dst_ip, app_name)
         report[err] = update_report(src_ip, dst_ip, app_name, b_bytes, report[err])
         if err != NO_ERR:
             report["tot_anom"] += 1

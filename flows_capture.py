@@ -6,14 +6,6 @@ with open('config.json', 'r') as fd:
     j = json.load(fd)
     OUT_FILENAME = j['out_file']
 
-# Export the received flows in the ".csv" format
-def print_pandas_flows(my_streamer):
-    try:
-        df = my_streamer.to_pandas()
-        df.to_csv(OUT_FILENAME)
-    except AttributeError:
-        print("No captured data. File empty.")
-
 # Parse command-line arguments
 def parse_cmdline_args(argv):
     interface = "null"
@@ -58,6 +50,8 @@ if __name__ == "__main__":
             statistical_analysis=False)
 
     # Export the flows using pandas in a .csv format
-    print_pandas_flows(my_streamer)
-
-
+    try:
+        df = my_streamer.to_pandas()
+        df.to_csv(OUT_FILENAME)
+    except AttributeError:
+        print("No captured data. File empty.")
