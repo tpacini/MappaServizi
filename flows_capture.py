@@ -1,8 +1,6 @@
 from nfstream import NFStreamer
-import sys, getopt
-import json
+import sys, getopt, os, json
 from scapy.arch.windows import *
-import os
 
 with open('config.json', 'r') as fd:
     j = json.load(fd)
@@ -54,6 +52,7 @@ if __name__ == "__main__":
         print("Platform not supported")
         sys.exit()
         
+    print("Capturing flows...")
     my_streamer = NFStreamer(source=source,
             bpf_filter=None,
             snapshot_length=1600,

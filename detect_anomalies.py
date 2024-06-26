@@ -1,8 +1,7 @@
 import nfstream
-import json
-import sys
-import getopt   
+import json, sys, os, getopt   
 import pandas as pd
+from scapy.arch.windows import *
 
 with open('config.json', 'r') as fd:
     j = json.load(fd)
@@ -24,11 +23,9 @@ report        = {"tot_flows":0, "tot_anom":0, NO_ERR:{}, SOFT_ERR:{}, APP_NAME_E
                     DST_IP_ERR:{}, SRC_IP_ERR:{}, UNK_PROTO_ERR:{}}  
 
 class ServiceMap:
-    self.dataset = None
-    self.sources = None
-
     def __init__(self):
-        pass
+        self.dataset = None
+        self.sources = None
 
     # Generate the data structure describing the services map
     def generate_services_map(self):
@@ -95,18 +92,14 @@ class ServiceMap:
         self.sources = sources
         with open(SERV_MAP_FILENAME, 'w') as fd:
             json.dump(sources, fd)
+            print("Services' map generated.")
 
 # Parse command-line arguments
 def parse_cmdline_args(argv):
-    usage_str = "Usage: detect_anomalies.py -i <interface>\n\tdetect_anomalies.py -a"
-
-    # No arguments/flag in input
-    if len(argv) == 0:
-        print(usage_str)
-        sys.exit()
+    usage_str = "Usage: detect_anomalies.py -h\n\tdetect_anomalies.py -a"
 
     try:
-        opts, args = getopt.getopt(argv, "ahi:", ["help=", "interface=", "analyze="])
+        opts, args = getopt.getopt(argv, "ah:", ["help=", "analyze="])
     except getopt.GetoptError:
         print("Error")
         sys.exit(2)
@@ -116,13 +109,9 @@ def parse_cmdline_args(argv):
         if opt in ['-h', '--help']:
             print(usage_str)
             sys.exit()
-        elif opt in ['-i', '--interface']:
-            interface = arg
         elif opt in ['-a', '--analyze_report']:
             print_report()
             exit(0)
-
-    return interface
 
 # Print the report of flows seen
 def print_report():
@@ -232,14 +221,38 @@ def bpf_string(addresses):
     for addr in addresses:
         filter_str += "dst host " + addr + " or " + "src host " + addr + " or "
 
-
     return filter_str[:-4]
 
 
 if __name__ == "__main__":
     # Get capture interface name
-    interface = parse_cmdline_args(sys.argv[1:])
+    parse_cmdline_args(sys.argv[1:])
     
+    print("Choose a network interface:")
+    interfaces = get_windows_if_list()
+    i = 0
+    for interface in interfaces:
+        print(f"[{i}] Name: {interface['name']}, GUID: {interface['guid']}")
+        i += 1
+
+    try:
+        id = int(input("Interface index: "))
+        if id < 0 or id > (len(interfaces)-1):
+            raise ValueError
+    except ValueError:
+        print(f"The index should be an integer between 0 and {len(interfaces)-1}.")
+
+    # Activate metering processes
+    if os.name == 'nt':
+        print("Windows platform.")
+        source = r"\Device\NPF_" + interfaces[id]['guid']
+    elif os.name == 'posix':
+        print("Linux platform.")
+        source = interfaces[id]['guid']
+    else:
+        print("Platform not supported")
+        sys.exit()
+
     # Generate the services map and load it, used as a reference to detect anomalies
     sm = ServiceMap()
     sm.generate_services_map()
@@ -251,8 +264,8 @@ if __name__ == "__main__":
         print("Services map file not found. Exiting..")
         exit(0)
 
-    # Activate the metering processes    
-    my_streamer = nfstream.NFStreamer(source=interface,
+    # Activate the metering processes 
+    my_streamer = nfstream.NFStreamer(source=source,
         bpf_filter = bpf_string(DEVICE_IPS), # filter the traffic on src/dst ip
         snapshot_length=1600,
         idle_timeout=60, # set to 120, 60 for testing
@@ -261,6 +274,7 @@ if __name__ == "__main__":
 
     # Display incoming flows and guarantee persistence
     inner_counter = 0
+    print("Incoming flows:")
     for flow in my_streamer:
         src_ip   = check_address(flow.src_ip) 
         dst_ip   = check_address(flow.dst_ip)

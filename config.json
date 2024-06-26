@@ -8,5 +8,5 @@
     "no_error" : "NONE",
     "report_file" : "./output/report.json",
     "servmap_file" : "./output/services_map.json",
-    "device_ips" : ["10.42.0.130"]
+    "device_ips" : ["192.168.1.103"]
 }

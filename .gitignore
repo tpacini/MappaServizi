@@ -1,3 +1,5 @@
-output/*.csv
+output/capture_results.csv
 .vs/
 venv/
+output/report.json
+output/services_map.json
