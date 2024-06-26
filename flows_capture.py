@@ -1,6 +1,8 @@
-import nfstream
+from nfstream import NFStreamer
 import sys, getopt
 import json
+from scapy.arch.windows import *
+import os
 
 with open('config.json', 'r') as fd:
     j = json.load(fd)
@@ -8,40 +10,51 @@ with open('config.json', 'r') as fd:
 
 # Parse command-line arguments
 def parse_cmdline_args(argv):
-    interface = "null"
-    usage = "Usage: flows_capture.py -i <capture_interface>"
-
-    # No arguments/flag in input
-    if len(argv) == 0:
-        print(usage)
-        sys.exit()
+    usage = "Usage: flows_capture.py\n\t-h for help"
 
     try:
-        opts, args = getopt.getopt(argv, "hi:", ["help=", "interface="])
+        opts, _ = getopt.getopt(argv, "h:", ["help=", "interface="])
     except getopt.GetoptError:
-        print("Error")
+        print(usage)
         sys.exit(2)
     
     # Parsing arguments
-    for opt, arg in opts:
+    for opt, _ in opts:
         if opt in ['-h', '--help']:
             print(usage)
             sys.exit()
-        elif opt in ['-i', '--interface']:
-            interface = arg
-
-    if interface == "null":
-        print(usage)
-        sys.exit()
-
-    return interface
 
 if __name__ == "__main__":
     # Get command-line arguments
-    interface = parse_cmdline_args(sys.argv[1:])
+    parse_cmdline_args(sys.argv[1:])
+
+    # Choose the traffic capture interface 
+    print("Choose a network interface:")
+    interfaces = get_windows_if_list()
+    i = 0
+    for interface in interfaces:
+        print(f"[{i}] Name: {interface['name']}, GUID: {interface['guid']}")
+        i += 1
+
+    try:
+        id = int(input("Interface index: "))
+        if id < 0 or id > (len(interfaces)-1):
+            raise ValueError
+    except ValueError:
+        print(f"The index should be an integer between 0 and {len(interfaces)-1}.")
 
     # Activate metering processes
-    my_streamer = nfstream.NFStreamer(source=interface,
+    if os.name == 'nt':
+        print("Windows platform.")
+        source = r"\Device\NPF_" + interfaces[id]['guid']
+    elif os.name == 'posix':
+        print("Linux platform.")
+        source = interfaces[id]['guid']
+    else:
+        print("Platform not supported")
+        sys.exit()
+        
+    my_streamer = NFStreamer(source=source,
             bpf_filter=None,
             snapshot_length=1600,
             idle_timeout=120,
