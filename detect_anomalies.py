@@ -1,4 +1,4 @@
-import nfstream
+from nfstream import NFStreamer
 import json, sys, os, getopt   
 import pandas as pd
 from scapy.arch.windows import *
@@ -265,7 +265,7 @@ if __name__ == "__main__":
         exit(0)
 
     # Activate the metering processes 
-    my_streamer = nfstream.NFStreamer(source=source,
+    my_streamer = NFStreamer(source=source,
         bpf_filter = bpf_string(DEVICE_IPS), # filter the traffic on src/dst ip
         snapshot_length=1600,
         idle_timeout=60, # set to 120, 60 for testing
